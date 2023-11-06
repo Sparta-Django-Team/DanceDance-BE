@@ -1,5 +1,4 @@
 import os
-from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -25,6 +24,8 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    "dance_dance.users.apps.UsersConfig",
+    "dance_dance.common.apps.CommonConfig",
 ]
 
 INSTALLED_APPS = [
@@ -85,7 +86,7 @@ DATABASES = {
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator", 
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
