@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from challenges.models import OriginalVideo, UserVideo
+from dance_dance.challenges.models import OriginalVideo, UserVideo
 
 
 class OriginalVideoSerializer(serializers.ModelSerializer):

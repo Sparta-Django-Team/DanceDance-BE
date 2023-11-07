@@ -3,8 +3,8 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from challenges.models import UserVideo
-from challenges.serializers import UserVideoSerializer
+from dance_dance.challenges.models import UserVideo
+from dance_dance.challenges.serializers import UserVideoSerializer
 
 
 # Create your views here.

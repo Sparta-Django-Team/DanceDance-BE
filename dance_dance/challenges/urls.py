@@ -1,6 +1,6 @@
 from django.urls import path
 
-from challenges import views
+from dance_dance.challenges import views
 
 urlpatterns = [
     path("", views.VideoListView.as_view(), name="video_list_view"),
