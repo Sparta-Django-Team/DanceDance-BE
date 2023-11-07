@@ -31,3 +31,6 @@ class VideoLikeView(APIView):
         else:
             video.likes.add(request.user)
             return Response("좋아요 했습니다.", status=status.HTTP_200_OK)
+
+
+# class VideoLoad(APIView):
