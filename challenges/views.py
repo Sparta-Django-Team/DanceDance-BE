@@ -23,5 +23,11 @@ class VideoDetailView(APIView):
 
 
 class VideoLikeView(APIView):
-    def get(self, request):
-        pass
+    def post(self, request, video_id):
+        video = get_object_or_404(UserVideo, id=video_id)
+        if request.user in video.likes.all():
+            video.likes.remove(request.user)
+            return Response("좋아요를 취소했습니다.", status=status.HTTP_200_OK)
+        else:
+            video.likes.add(request.user)
+            return Response("좋아요 했습니다.", status=status.HTTP_200_OK)
