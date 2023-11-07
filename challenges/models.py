@@ -5,7 +5,7 @@ from django.db import models
 class OriginalVideo(models.Model):
     # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=32)
-    youtube_video_id = models.CharField(max_length=512)
+    youtube_video_url = models.CharField(max_length=512)
     channel_name = models.CharField(max_length=16)
     thumbnail_image_url = models.CharField(max_length=512)
     motion_data_url = models.CharField(max_length=512)
@@ -22,7 +22,7 @@ class OriginalVideo(models.Model):
 class UserVideo(models.Model):
     # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=32)
-    youtube_video_id = models.CharField(max_length=512)
+    youtube_video_url = models.CharField(max_length=512)
     channel_name = models.CharField(max_length=16)
     thumbnail_image_url = models.CharField(max_length=512)
     uploaded_at = models.DateTimeField()
