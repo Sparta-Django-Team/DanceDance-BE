@@ -10,8 +10,6 @@ from dance_dance.challenges.serializers import UserVideoSerializer
 
 from dance_dance.challenges.functions import createFolder, download_video
 
-from django.http import JsonResponse
-
 import json
 
 # Create your views here.
@@ -63,7 +61,7 @@ class VideoLoadView(APIView):
         print("챌린지 이름: " + chl_name)  # 챌린지 이름
         print("Landmark 경로: " + lm_path)  # landmark 경로
 
-        
+
         video_route = download_results["video_route"]
         contents = [video_route, file_type]
         return Response(download_results, status=status.HTTP_200_OK)

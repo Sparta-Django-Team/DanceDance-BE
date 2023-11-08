@@ -76,140 +76,110 @@ def match_sync(vpath_1, vpath_2):
     return sync_difference_seconds
 
 
-class GetLandmarks:
-    def __init__(self):
-        self.clm_list = [
-            "idx",
-            "l_shld_x",
-            "l_shld_y",
-            "l_shld_z",  #'l_shld_vis',
-            "r_shld_x",
-            "r_shld_y",
-            "r_shld_z",  #'r_shld_vis',
-            "l_elbw_x",
-            "l_elbw_y",
-            "l_elbw_z",  #'l_elbw_vis',
-            "r_elbw_x",
-            "r_elbw_y",
-            "r_elbw_z",  #'r_elbw_vis',
-            "l_wrst_x",
-            "l_wrst_y",
-            "l_wrst_z",  #'l_wrst_vis',
-            "r_wrst_x",
-            "r_wrst_y",
-            "r_wrst_z",  #'r_wrst_vis',
-            "l_hip_x",
-            "l_hip_y",
-            "l_hip_z",  #'l_hip_vis',
-            "r_hip_x",
-            "r_hip_y",
-            "r_hip_z",  #'r_hip_vis',
-            "l_knee_x",
-            "l_knee_y",
-            "l_knee_z",  #'l_knee_vis',
-            "r_knee_x",
-            "r_knee_y",
-            "r_knee_z",  #'r_knee_vis',
-            "l_ankl_x",
-            "l_ankl_y",
-            "l_ankl_z",  #'l_ankl_vis',
-            "r_ankl_x",
-            "r_ankl_y",
-            "r_ankl_z",  #'r_ankl_vis',
-        ]
-        self.mp_pose = mp.solutions.pose
-        self.mp_draw = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
-        self.pose = self.mp_pose.Pose()
+def get_landmarks(video_route, file_type):
 
-    def get_landmarks(self, video_route, file_type):
-        print(video_route)
-        cap = cv2.VideoCapture(video_route)
+    # clm_list 생성
+    clm_list = []
+    coordinates = ['x', 'y', 'z']
+    sides = ['l', 'r']
+    clm_list.append('idx')  # Adding 'idx' at the beginning of the list
+    for body_part in ["shld", "elbw", "wrst", "hip", "knee", "ankl"]:
+        for side in sides:
+            for coordinate in coordinates:
+                clm_list.append(f"{side}_{body_part}_{coordinate}")
 
-        # title = video_route.split('/')[-1].split('.')[0]
-        title = os.path.splitext(os.path.basename(video_route))[0]
+    mp_pose = mp.solutions.pose
+    mp_draw = mp.solutions.drawing_utils
+    mp_drawing_styles = mp.solutions.drawing_styles
+    pose = mp_pose.Pose()
 
-        # 새로운 비디오 생성을 위한 설정
-        output_directory = f"./temp/videos/output/{file_type}/"
-        os.makedirs(output_directory, exist_ok=True)
+    print(video_route)
+    cap = cv2.VideoCapture(video_route)
 
-        output_video_path = f"./temp/videos/output/{file_type}/{title}_landmarks.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*"DIVX")
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_size = (int(cap.get(3)), int(cap.get(4)))  # 원본 동영상의 크기로 프레임 크기 설정
+    # title = video_route.split('/')[-1].split('.')[0]
+    title = os.path.splitext(os.path.basename(video_route))[0]
 
-        # 비디오 저장기 초기화
-        out = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
-        df = pd.DataFrame(columns=self.clm_list)  # 빈 dataframe 생성
-        # df = pd.DataFrame()        # 빈 dataframe 생성
-        # clm = pd.DataFrame(clm_list).T
-        # df = pd.concat([df, clm])
+    # 새로운 비디오 생성을 위한 설정
+    output_directory = f"./temp/videos/output/{file_type}/"
+    os.makedirs(output_directory, exist_ok=True)
 
-        # mp_pose = mp.solutions.pose
-        # mp_draw = mp.solutions.drawing_utils
-        # mp_drawing_styles = mp.solutions.drawing_styles
-        # pose = mp_pose.Pose()
+    output_video_path = f"./temp/videos/output/{file_type}/{title}_landmarks.mp4"
+    fourcc = cv2.VideoWriter_fourcc(*"DIVX")
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_size = (int(cap.get(3)), int(cap.get(4)))  # 원본 동영상의 크기로 프레임 크기 설정
 
-        # 랜드마크 추출 인터벌 설정
-        extract_interval_seconds = 0.05
-        extract_interval_frames = int(cap.get(cv2.CAP_PROP_FPS) * extract_interval_seconds)
+    # 비디오 저장기 초기화
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
+    df = pd.DataFrame(columns=clm_list)  # 빈 dataframe 생성
+    # df = pd.DataFrame()        # 빈 dataframe 생성
+    # clm = pd.DataFrame(clm_list).T
+    # df = pd.concat([df, clm])
 
-        frame_count = 0
+    # mp_pose = mp.solutions.pose
+    # mp_draw = mp.solutions.drawing_utils
+    # mp_drawing_styles = mp.solutions.drawing_styles
+    # pose = mp_pose.Pose()
 
-        with self.mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
-            print("Extracting landmarks...")
+    # 랜드마크 추출 인터벌 설정
+    extract_interval_seconds = 0.05
+    extract_interval_frames = int(cap.get(cv2.CAP_PROP_FPS) * extract_interval_seconds)
 
-            # while True:
-            while cap.isOpened():
-                ret, img = cap.read()
-                if not ret:
-                    break
+    frame_count = 0
 
-                frame_count += 1
+    with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+        print("Extracting landmarks...")
 
-                if frame_count % extract_interval_frames == 0:
-                    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                    img = cv2.resize(img, (200, 400))
+        # while True:
+        while cap.isOpened():
+            ret, img = cap.read()
+            if not ret:
+                break
 
-                    results = self.pose.process(img)
+            frame_count += 1
 
-                    # 랜드마크 생성
-                    if results.pose_landmarks:
-                        self.mp_draw.draw_landmarks(
-                            img,
-                            results.pose_landmarks,
-                            self.mp_pose.POSE_CONNECTIONS,
-                            landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style(),
-                        )
+            if frame_count % extract_interval_frames == 0:
+                # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img = cv2.resize(img, (200, 400))
 
-                        x = []
-                        x.append(str(frame_count // 3).split(".")[0])
-                        for k in range(33):
-                            if (11 <= k < 17) or (23 <= k < 29):
-                                x.append(results.pose_landmarks.landmark[k].x)
-                                x.append(results.pose_landmarks.landmark[k].y)
-                                x.append(results.pose_landmarks.landmark[k].z)
-                                # x.append(results.pose_landmarks.landmark[k].visibility)
-                        # list x를 dataframe으로 변경하여 정보 쌓기(33개 landmarks의 (33*4, x y z, vis) 132개 정보)
-                        tmp = pd.DataFrame([x], columns=self.clm_list)
-                        df = pd.concat([df, tmp])
+                results = pose.process(img)
 
-                    ################################################### 랜드마크가 표시된 프레임을 저장
-                    out.write(img)
+                # 랜드마크 생성
+                if results.pose_landmarks:
+                    mp_draw.draw_landmarks(
+                        img,
+                        results.pose_landmarks,
+                        mp_pose.POSE_CONNECTIONS,
+                        landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
+                    )
 
-                    cv2.imshow("Estimation", img)
-                    cv2.waitKey(1)
+                    x = []
+                    x.append(str(frame_count // 3).split(".")[0])
+                    for k in range(33):
+                        if (11 <= k < 17) or (23 <= k < 29):
+                            x.append(results.pose_landmarks.landmark[k].x)
+                            x.append(results.pose_landmarks.landmark[k].y)
+                            x.append(results.pose_landmarks.landmark[k].z)
+                            # x.append(results.pose_landmarks.landmark[k].visibility)
+                    # list x를 dataframe으로 변경하여 정보 쌓기(33개 landmarks의 (33*4, x y z, vis) 132개 정보)
+                    tmp = pd.DataFrame([x], columns=clm_list)
+                    df = pd.concat([df, tmp])
 
-        # 비디오 저장기 닫기
-        cap.release()
-        out.release()
+                ################################################### 랜드마크가 표시된 프레임을 저장
+                out.write(img)
 
-        cv2.destroyAllWindows()
+                cv2.imshow("Estimation", img)
+                cv2.waitKey(1)
 
-        csv_path = f"./temp/landmarks/{file_type}/{title}.csv"
-        df.to_csv(csv_path, index=False)
+    # 비디오 저장기 닫기
+    cap.release()
+    out.release()
 
-        return output_video_path, csv_path
+    cv2.destroyAllWindows()
+
+    csv_path = f"./temp/landmarks/{file_type}/{title}.csv"
+    df.to_csv(csv_path, index=False)
+
+    return output_video_path, csv_path
 
 
 class GetScores:
