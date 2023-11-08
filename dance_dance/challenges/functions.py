@@ -1,4 +1,3 @@
-import glob
 import os
 from datetime import datetime
 
@@ -20,85 +19,61 @@ def createFolder(directory):
     except OSError:
         print("Error: Creating directory. " + directory)
 
+def download_video(video_url):
+    now = datetime.now()
+    DOWNLOAD_DIR = r"./temp/videos"
+    yt = YouTube(video_url)
+    chl_name = str(yt.title.split("#")[1])
+    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
+    yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
+    video_route = f"./temp/videos/{video_title}.mp4"
+    channel_name = yt.channel_id
+    thumbnail_image_url = yt.thumbnail_url
+    uploaded_date = yt.publish_date
 
-class VideoLoader:
-    def __init__(self):
-        self.now = datetime.now()
-        self.DOWNLOAD_DIR = r"./data/videos"
+    results = {"video_route": video_route, 
+                "video_url": video_url,
+                "video_title": video_title,
+                "channel_name": channel_name, 
+                "challenge_name": chl_name,
+                "thumbnail_image_url": thumbnail_image_url,
+                "uploaded_date": uploaded_date}
+    return results
 
-    def download_video(self, video_url):
-        yt = YouTube(video_url)
-        chl_name = str(yt.title.split("#")[1])
-        video_title = (str(self.now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
-        yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=self.DOWNLOAD_DIR, filename=f"{video_title}.mp4")
-        video_route = f"./data/videos/{video_title}.mp4"
-        results = {"video_route": video_route, "video_title": video_title, "challenge_name": chl_name}
-        return results
+    
 
-    def loader(self):
-        video_url_add = input("신규 유튜브 링크 :")
-        while True:
-            try:
-                n_o = input("new or origin (n/o):")
-                if n_o == "n":
-                    file_type = "new"
-                    break
-                elif n_o == "o":
-                    file_type = "origin"
-                    break
-            except:
-                print("잘못된 입력값입니다. 다시 입력해주세요")
+def match_sync(vpath_1, vpath_2):
+    # 비디오 파일 로드
+    video1 = mvp.VideoFileClip(vpath_1)
+    video2 = mvp.VideoFileClip(vpath_2)
 
-        print(file_type)
-        download_results = self.download_video(video_url_add)
+    # Audio 파일 경로 설정
+    mp3_file1 = "./temp/audios/audio_1.mp3"
+    mp3_file2 = "./temp/audios/audio_2.mp3"
 
-        chl_name = download_results["challenge_name"].replace(" ", "")
-        lm_path = f"/data/landmarks/{file_type}"
-        createFolder("./data/landmarks/")
-        end_str = f"{chl_name}.mp4"
-        for f in glob.glob(f"data/landmarks/{file_type}/*{end_str}.csv"):
-            print("확인")
-            print(f)
+    createFolder("./temp/audios/")
 
-        print("챌린지 이름: " + chl_name)  # 챌린지 이름
-        print("Landmark 경로: " + lm_path)  # landmark 경로
+    # Audio 파일 생성
+    print("Creating Audio files...")
+    video1.audio.write_audiofile(mp3_file1)
+    video2.audio.write_audiofile(mp3_file2)
 
-        video_route = download_results["video_route"]
-        return video_route, file_type
+    # Audio 파일 load
+    print("Loading audio files...")
 
-    @staticmethod
-    def match_sync(vpath_1, vpath_2):
-        # 비디오 파일 로드
-        video1 = mvp.VideoFileClip(vpath_1)
-        video2 = mvp.VideoFileClip(vpath_2)
+    y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
+    y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
 
-        # Audio 파일 경로 설정
-        mp3_file1 = "./data/audios/audio_1.mp3"
-        mp3_file2 = "./data/audios/audio_2.mp3"
+    # cross-correlation 계산
+    print("Calculating Cross-Correlation...")
+    correlation = np.correlate(y1, y2, mode="full")
+    peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
+    print("peak index: ", peak_index)
 
-        createFolder("./data/audios/")
-
-        # Audio 파일 생성
-        print("Creating Audio files...")
-        video1.audio.write_audiofile(mp3_file1)
-        video2.audio.write_audiofile(mp3_file2)
-
-        # Audio 파일 load
-        print("Loading audio files...")
-
-        y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
-        y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
-
-        # cross-correlation 계산
-        print("Calculating Cross-Correlation...")
-        correlation = np.correlate(y1, y2, mode="full")
-        peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
-        print("peak index: ", peak_index)
-
-        # sync 차이 계산 (peak 위치를 초 단위로 변환)
-        sync_difference_seconds = (peak_index - len(y2) + 1) / sr1
-        print(f"Sync difference: 약 {sync_difference_seconds:.2f}sec")
-        return sync_difference_seconds
+    # sync 차이 계산 (peak 위치를 초 단위로 변환)
+    sync_difference_seconds = (peak_index - len(y2) + 1) / sr1
+    print(f"Sync difference: 약 {sync_difference_seconds:.2f}sec")
+    return sync_difference_seconds
 
 
 class GetLandmarks:
@@ -155,10 +130,10 @@ class GetLandmarks:
         title = os.path.splitext(os.path.basename(video_route))[0]
 
         # 새로운 비디오 생성을 위한 설정
-        output_directory = f"./data/videos/output/{file_type}/"
+        output_directory = f"./temp/videos/output/{file_type}/"
         os.makedirs(output_directory, exist_ok=True)
 
-        output_video_path = f"./data/videos/output/{file_type}/{title}_landmarks.mp4"
+        output_video_path = f"./temp/videos/output/{file_type}/{title}_landmarks.mp4"
         fourcc = cv2.VideoWriter_fourcc(*"DIVX")
         fps = cap.get(cv2.CAP_PROP_FPS)
         frame_size = (int(cap.get(3)), int(cap.get(4)))  # 원본 동영상의 크기로 프레임 크기 설정
@@ -231,7 +206,7 @@ class GetLandmarks:
 
         cv2.destroyAllWindows()
 
-        csv_path = f"./data/landmarks/{file_type}/{title}.csv"
+        csv_path = f"./temp/landmarks/{file_type}/{title}.csv"
         df.to_csv(csv_path, index=False)
 
         return output_video_path, csv_path
@@ -310,7 +285,7 @@ class PlotPose:
         # Setting OpenCV VideoWriter
         codec = "DIVX"
         fourcc = cv2.VideoWriter_fourcc(*codec)
-        out = cv2.VideoWriter("./data/landmarks/outputs/output.avi", fourcc, 30, (640, 480), isColor=True)
+        out = cv2.VideoWriter("./temp/landmarks/outputs/output.avi", fourcc, 30, (640, 480), isColor=True)
 
         # frame interval
         fps = 10
