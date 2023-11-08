@@ -19,65 +19,11 @@ def createFolder(directory):
     except OSError:
         print("Error: Creating directory. " + directory)
 
-def download_video(video_url, file_type):
-    now = datetime.now()
-    DOWNLOAD_DIR = f"./temp/videos/{file_type}"
-    yt = YouTube(video_url)
-    chl_name = str(yt.title.split("#")[1])
-    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
-    yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
-    video_route = f"./temp/videos/{file_type}/{video_title}.mp4"
-    channel_name = yt.author
-    thumbnail_image_url = yt.thumbnail_url
-    uploaded_date = yt.publish_date
-
-    results = {"title": video_title,
-                "youtube_video_url": video_url,
-                "channel_name": channel_name, 
-                "thumbnail_image_url": thumbnail_image_url,
-                "uploaded_at": uploaded_date,
-                "video_route": video_route, 
-                "challenge_name": chl_name}
-    return results
-
-
-def match_sync(vpath_1, vpath_2):
-    # 비디오 파일 로드
-    video1 = mvp.VideoFileClip(vpath_1)
-    video2 = mvp.VideoFileClip(vpath_2)
-
-    # Audio 파일 경로 설정
-    mp3_file1 = "./temp/audios/audio_1.mp3"
-    mp3_file2 = "./temp/audios/audio_2.mp3"
-
-    createFolder("./temp/audios/")
-
-    # Audio 파일 생성
-    print("Creating Audio files...")
-    video1.audio.write_audiofile(mp3_file1)
-    video2.audio.write_audiofile(mp3_file2)
-
-    # Audio 파일 load
-    print("Loading audio files...")
-
-    y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
-    y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
-
-    # cross-correlation 계산
-    print("Calculating Cross-Correlation...")
-    correlation = np.correlate(y1, y2, mode="full")
-    peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
-    print("peak index: ", peak_index)
-
-    # sync 차이 계산 (peak 위치를 초 단위로 변환)
-    sync_difference_seconds = (peak_index - len(y2) + 1) / sr1
-    print(f"Sync difference: 약 {sync_difference_seconds:.2f}sec")
-    return sync_difference_seconds
-
 
 def get_landmarks(video_route, file_type):
 
-    createFolder("./temp/landmarks/")
+    createFolder("./temp/landmarks/origin/")
+    createFolder("./temp/landmarks/user/")
 
     # clm_list 생성
     clm_list = []
@@ -181,6 +127,41 @@ def get_landmarks(video_route, file_type):
     df.to_csv(csv_path, index=False)
 
     return output_video_path, csv_path
+
+
+
+def match_sync(vpath_1, vpath_2):
+    # 비디오 파일 로드
+    video1 = mvp.VideoFileClip(vpath_1)
+    video2 = mvp.VideoFileClip(vpath_2)
+
+    # Audio 파일 경로 설정
+    mp3_file1 = "./temp/audios/audio_1.mp3"
+    mp3_file2 = "./temp/audios/audio_2.mp3"
+
+    createFolder("./temp/audios/")
+
+    # Audio 파일 생성
+    print("Creating Audio files...")
+    video1.audio.write_audiofile(mp3_file1)
+    video2.audio.write_audiofile(mp3_file2)
+
+    # Audio 파일 load
+    print("Loading audio files...")
+
+    y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
+    y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
+
+    # cross-correlation 계산
+    print("Calculating Cross-Correlation...")
+    correlation = np.correlate(y1, y2, mode="full")
+    peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
+    print("peak index: ", peak_index)
+
+    # sync 차이 계산 (peak 위치를 초 단위로 변환)
+    sync_difference_seconds = (peak_index - len(y2) + 1) / sr1
+    print(f"Sync difference: 약 {sync_difference_seconds:.2f}sec")
+    return sync_difference_seconds
 
 
 class GetScores:
@@ -322,3 +303,47 @@ class PlotPose:
         # Releasing resources
         out.release()
         cv2.destroyAllWindows()
+
+
+
+
+def download_video(video_url, file_type):
+    now = datetime.now()
+    DOWNLOAD_DIR = f"./temp/videos/{file_type}"
+    yt = YouTube(video_url)
+    chl_name = str(yt.title.split("#")[1])
+    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
+    yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
+    video_route = f"./temp/videos/{file_type}/{video_title}.mp4"
+    channel_name = yt.author
+    thumbnail_image_url = yt.thumbnail_url
+    uploaded_date = yt.publish_date
+    hits = yt.views
+    keywords = yt.keywords
+    
+    # --> get landmark and save csv file
+    output_video_path, csv_path = get_landmarks(video_route, file_type)
+    motion_data_url = csv_path
+
+    # ★ uservideo
+    # DB에서 챌린지 이름이 동일한 origin video landmark를 찾고, 비교하는 로직 추가 필요
+
+    # score = 
+    # score_list = 
+    # # results에 download_result와 landmark 정보를 업데이트해야 함
+    # score = 
+    # score_list = 
+
+    results = {"title": video_title,
+               "youtube_video_url": video_url,
+               "channel_name": channel_name, 
+               "thumbnail_image_url": thumbnail_image_url,
+               "uploaded_at": uploaded_date,
+               "video_route": video_route, 
+               "challenge_name": chl_name,
+               "hits": hits,
+               "motion_data_url": motion_data_url,
+               "keywords": keywords,
+               }
+    print(results['keywords'])
+    return results

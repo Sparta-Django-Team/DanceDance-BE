@@ -5,10 +5,10 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from dance_dance.challenges.models import UserVideo
-from dance_dance.challenges.serializers import UserVideoSerializer, OriginalVideoSerializer
+from dance_dance.challenges.models import OriginalVideo, UserVideo, Tag
+from dance_dance.challenges.serializers import UserVideoSerializer, OriginalVideoSerializer, TagCreateSerializer
 
-from dance_dance.challenges.functions import createFolder, download_video
+from dance_dance.challenges.functions import createFolder, download_video, get_landmarks
 
 import json
 
@@ -43,17 +43,23 @@ class VideoLoadView(APIView):
         if request.method == 'POST':
             data = json.loads(request.body)
             video_url = data['video_url']
-        download_results = download_video(video_url, file_type)
+        results = download_video(video_url, file_type)
+
         if file_type == 'origin':
-            serializer = OriginalVideoSerializer(data=download_results)
+            serializer = OriginalVideoSerializer(data=results)
         elif file_type == 'user':
-            serializer = UserVideoSerializer(data=download_results)
+            serializer = UserVideoSerializer(data=results)
+
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class TagCreateView(APIView):
+    def post(self, request):
+        serializer = TagCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-
-
