@@ -19,28 +19,27 @@ def createFolder(directory):
     except OSError:
         print("Error: Creating directory. " + directory)
 
-def download_video(video_url):
+def download_video(video_url, file_type):
     now = datetime.now()
-    DOWNLOAD_DIR = r"./temp/videos"
+    DOWNLOAD_DIR = f"./temp/videos/{file_type}"
     yt = YouTube(video_url)
     chl_name = str(yt.title.split("#")[1])
     video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
     yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
-    video_route = f"./temp/videos/{video_title}.mp4"
-    channel_name = yt.channel_id
+    video_route = f"./temp/videos/{file_type}/{video_title}.mp4"
+    channel_name = yt.author
     thumbnail_image_url = yt.thumbnail_url
     uploaded_date = yt.publish_date
 
-    results = {"video_route": video_route, 
-                "video_url": video_url,
-                "video_title": video_title,
+    results = {"title": video_title,
+                "youtube_video_url": video_url,
                 "channel_name": channel_name, 
-                "challenge_name": chl_name,
                 "thumbnail_image_url": thumbnail_image_url,
-                "uploaded_date": uploaded_date}
+                "uploaded_at": uploaded_date,
+                "video_route": video_route, 
+                "challenge_name": chl_name}
     return results
 
-    
 
 def match_sync(vpath_1, vpath_2):
     # 비디오 파일 로드
@@ -77,6 +76,8 @@ def match_sync(vpath_1, vpath_2):
 
 
 def get_landmarks(video_route, file_type):
+
+    createFolder("./temp/landmarks/")
 
     # clm_list 생성
     clm_list = []
