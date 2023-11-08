@@ -46,15 +46,24 @@ class Tag(models.Model):
     name = models.CharField(max_length=64)
     parent_tag_id = models.ForeignKey('self', on_delete=models.CASCADE, null=True)
 
+    def __str__(self):
+        return str(self.name)
+
 
 class OriginalVideoTag(models.Model):
     original_video_id = models.ForeignKey(OriginalVideo, on_delete=models.CASCADE, related_name="original_video_id")
     tag_id = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name="original_video_tag")
 
+    def __str__(self):
+        return "["+str(self.tag_id)+"]_"+str(self.original_video_id)
+
 
 class UserVideoTag(models.Model):
     user_video_id = models.ForeignKey(UserVideo, on_delete=models.CASCADE, related_name="user_video_id")
     tag_id = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name="user_video_tag")
+
+    def __str__(self):
+        return "["+str(self.tag_id)+"]_"+str(self.user_video_id)
 
 
 class OriginalVideoLikesLog(models.Model):
