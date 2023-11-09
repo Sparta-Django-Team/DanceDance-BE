@@ -1,5 +1,4 @@
 import os
-import time
 from datetime import datetime
 
 import cv2
@@ -9,13 +8,13 @@ import moviepy.editor as mvp
 import numpy as np
 import pandas as pd
 from pytube import YouTube
-from sklearn import preprocessing
 from sklearn.metrics.pairwise import cosine_similarity
+# import concurrent.futures : 병렬처리 코드 진행 중
 
 from django.db.models import Q
 from dance_dance.challenges.models import Tag, OriginalVideo, OriginalVideoTag
 
-def createFolder(directory):
+def create_folder(directory):
     try:
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -31,7 +30,7 @@ def match_sync(vpath_1, vpath_2):
     mp3_file1 = "./temp/audios/audio_1.mp3"
     mp3_file2 = "./temp/audios/audio_2.mp3"
 
-    createFolder("./temp/audios/")
+    create_folder("./temp/audios/")
 
     # Audio 파일 생성
     print("Creating Audio files...")
@@ -55,8 +54,8 @@ def match_sync(vpath_1, vpath_2):
 
 
 def get_landmarks(video_route, file_type):
-    createFolder("./temp/landmarks/origin/")
-    createFolder("./temp/landmarks/user/")
+    create_folder("./temp/landmarks/origin/")
+    create_folder("./temp/landmarks/user/")
     
     # clm_list 생성
     clm_list = ['idx']
@@ -98,7 +97,6 @@ def get_landmarks(video_route, file_type):
     sec = 0.0
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
         print("Extracting landmarks...")
-
         # while True:
         while cap.isOpened():
             ret, img = cap.read()
@@ -180,8 +178,6 @@ class GetScores:
         ldmk_1 = ldmk_1[:length_val]
         ldmk_2 = ldmk_2[:length_val]
 
-        # normalize 진행 여부 검토!
-
         cosine_sim = cosine_similarity(ldmk_1, ldmk_2)
         results = np.round_(np.diag(cosine_sim), 2).tolist()
         print("-----Results of Cosine Similarity-----")
@@ -190,99 +186,6 @@ class GetScores:
         print(f"score: {str(round(mean_score*100, 1))}점")
 
         return [mean_score, results]
-
-
-class PlotPose:
-    @staticmethod
-    def normalize_landmarks(ldmk):
-        # Normalize landmarks using Min-Max scaling
-        min_vals = ldmk.min()
-        max_vals = ldmk.max()
-        normalized_ldmk = (ldmk - min_vals) / (max_vals - min_vals)
-        return normalized_ldmk
-
-    @classmethod
-    def plot_pose(cls, ldmk_1, ldmk_2):
-        # # Normalize landmarks
-        # normalized_ldmk_1 = cls.normalize_landmarks(ldmk_1)
-        # normalized_ldmk_2 = cls.normalize_landmarks(ldmk_2)
-
-        # df1 = pd.DataFrame(normalized_ldmk_1)
-        # df2 = pd.DataFrame(normalized_ldmk_2)
-
-        df1 = pd.DataFrame(ldmk_1)
-        df2 = pd.DataFrame(ldmk_2)
-
-        # Setting OpenCV VideoWriter
-        codec = "DIVX"
-        fourcc = cv2.VideoWriter_fourcc(*codec)
-        out = cv2.VideoWriter("./temp/landmarks/outputs/output.avi", fourcc, 30, (640, 480), isColor=True)
-
-        # frame interval
-        fps = 10
-        delay = round(1000 / fps)
-
-        # Initialize Mediapipe Holistic Model
-        mp_holistic = mp.solutions.holistic
-        holistic = mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-
-        # Determine the total number of frames to iterate
-        total_frames = min(len(df1), len(df2))
-
-        # Visualize landmarks
-        for i in range(total_frames):
-            frame = np.zeros((400, 400, 3), dtype=np.uint8)
-
-            landmark_coords = [
-                (0, 1),
-                (3, 4),
-                (6, 7),
-                (9, 10),
-                (12, 13),
-                (15, 16),
-                (18, 19),
-                (21, 22),
-                (24, 25),
-                (27, 28),
-                (30, 31),
-                (33, 34),
-            ]
-
-            for landmark_x, landmark_y in landmark_coords:
-                # Extract landmark coordinates from both dataframes
-                x1, y1 = df1.loc[i][landmark_x], df1.loc[i][landmark_y]
-                x2, y2 = df2.loc[i][landmark_x], df2.loc[i][landmark_y]
-
-                # Transfering Position
-                screen_x1 = int(x1 * 300)
-                screen_y1 = int(y1 * 300)
-                screen_x2 = int(x2 * 300)
-                screen_y2 = int(y2 * 300)
-
-                # Drawing circles for both sets of landmarks
-                cv2.circle(frame, (screen_x1, screen_y1), 2, (0, 255, 0), -1)
-                cv2.circle(frame, (screen_x2, screen_y2), 2, (0, 0, 255), -1)  # Offset the second set of landmarks
-
-                # Drawing lines between landmarks
-                cv2.line(frame, (screen_x1, screen_y1), (screen_x1 + 3, screen_y1 + 3), (255, 0, 0), 1)
-                cv2.line(frame, (screen_x2, screen_y2), (screen_x2 + 3, screen_y2 + 3), (255, 0, 0), 1)
-
-            # Time
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(frame, f"Time: {i}", (50, 50), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
-
-            # Saving output
-            out.write(frame)
-            cv2.imshow("Frame", frame)
-
-            # Quitting condition
-            if cv2.waitKey(delay) == 27 & 0xFF == ord("q"):
-                break
-        
-        
-        # Releasing resources
-        out.release()
-        cv2.destroyAllWindows()
 
 
 
@@ -297,6 +200,7 @@ def download_video(video_url, file_type):
     thumbnail_image_url = yt.thumbnail_url
     uploaded_date = yt.publish_date
     hits = yt.views
+    
     # 영상 제목에서 키워드(#해시태그) 추출
     keywords = [x.strip().lower() for x in yt.title.split('#')][1:]
     print(keywords)
@@ -315,8 +219,6 @@ def download_video(video_url, file_type):
     video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + str(chl_tag.parent_tag_id) + "_" + str(channel_name)).replace(" ","")
     yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
     video_file_path = f"./temp/videos/{file_type}/{video_title}.mp4"
-    
-
 
     # 결과 데이터 results의 각 인자로 저장
     results = {"title": video_title,
