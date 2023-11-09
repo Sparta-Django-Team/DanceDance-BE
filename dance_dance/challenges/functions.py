@@ -40,7 +40,6 @@ def match_sync(vpath_1, vpath_2):
 
     # Audio 파일 load
     print("Loading audio files...")
-
     y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
     y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
 
@@ -48,11 +47,11 @@ def match_sync(vpath_1, vpath_2):
     print("Calculating Cross-Correlation...")
     correlation = np.correlate(y1, y2, mode="full")
     peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
-    print("peak index: ", peak_index)
+    # print("peak index: ", peak_index)
 
     # sync 차이 계산 (peak 위치를 초 단위로 변환)
-    sync_difference_seconds = (peak_index - len(y2) + 1) / sr1
-    print(f"Sync difference: 약 {sync_difference_seconds:.2f}sec")
+    sync_difference_seconds = round((peak_index - len(y2) + 1) / sr1 * 10, 2)
+    print(f"Sync difference: 약 {sync_difference_seconds:.2f} * 0.1 sec")
     return sync_difference_seconds
 
 
@@ -87,6 +86,7 @@ def get_landmarks(video_route, file_type, sync_difference_seconds):
     output_video_path = f"./temp/videos/output/{file_type}/{title}_landmarks.mp4"
     fourcc = cv2.VideoWriter_fourcc(*"DIVX")
     fps = cap.get(cv2.CAP_PROP_FPS)
+    length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print("fps:"+str(fps))
     frame_size = (int(cap.get(3)), int(cap.get(4)))  # 원본 동영상의 크기로 프레임 크기 설정
 
@@ -99,7 +99,7 @@ def get_landmarks(video_route, file_type, sync_difference_seconds):
     extract_interval_frames = fps * extract_interval_seconds        # 0.1초마다 생성되는 프레임 수 (float : 2.997002997002997)
 
     frame_count = 0
-    sec = 0.0 + sync_difference_seconds 
+    sec = 0.0 - sync_difference_seconds 
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
         print("Extracting landmarks...")
 
@@ -112,9 +112,10 @@ def get_landmarks(video_route, file_type, sync_difference_seconds):
             frame_count += 1
             if frame_count // extract_interval_frames >= sec:
                 sec = round(sec + 1, 1)
-                img = cv2.resize(img, (200, 400))
+                print("진행률 :" + str(round(sec/(length/fps)*10, 1))+"%")
+                img = cv2.resize(img, (200, 400)) 
                 results = pose.process(img)
-                
+                x = [sec]
                 # 랜드마크 생성
                 if results.pose_landmarks:
                     mp_draw.draw_landmarks(
@@ -123,17 +124,17 @@ def get_landmarks(video_route, file_type, sync_difference_seconds):
                         mp_pose.POSE_CONNECTIONS,
                         landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
                     )
-                    x = [sec]
                     for k in range(33):
                         if (11 <= k < 17) or (23 <= k < 29):
-                            x.append(results.pose_landmarks.landmark[k].x)
-                            x.append(results.pose_landmarks.landmark[k].y)
-                            x.append(results.pose_landmarks.landmark[k].z)
+                            x.append(round(results.pose_landmarks.landmark[k].x, 3))
+                            x.append(round(results.pose_landmarks.landmark[k].y, 3))
+                            x.append(round(results.pose_landmarks.landmark[k].z, 3))
                             # x.append(results.pose_landmarks.landmark[k].visibility)
-                    # list x를 dataframe으로 변경하여 정보 쌓기(33개 landmarks의 (33*4, x y z, vis) 132개 정보)
-                    tmp = pd.DataFrame([x], columns=clm_list)
-                    df = pd.concat([df, tmp])
-
+                else:
+                    for k in range(36):
+                        x.append(0.000)
+                tmp = pd.DataFrame([x], columns=clm_list)
+                df = pd.concat([df, tmp])
                 #랜드마크가 표시된 프레임을 저장
                 out.write(img)
                 cv2.imshow("Estimation", img)
@@ -156,12 +157,15 @@ class GetScores:
         self.now = datetime.now()
 
     @staticmethod
-    def compare_videos(lpath_1, lpath_2, sync_difference_seconds):
+    def compare_videos(lpath_1, lpath_2, sync_difference_seconds):           # , sync_difference_seconds
         diff = sync_difference_seconds
         # load data
         data1 = pd.read_csv(lpath_1)
         data2 = pd.read_csv(lpath_2)
 
+        # ldmk_1 = np.array(pd.read_csv(lpath_1))
+        # ldmk_2 = np.array(pd.read_csv(lpath_2))
+        
         if diff > 0:
             ldmk_1 = np.array(data1)[1 + diff :, 1:]
             ldmk_2 = np.array(data2)[1:, 1:]
@@ -181,23 +185,23 @@ class GetScores:
         ldmk_1 = ldmk_1[:length_val]
         ldmk_2 = ldmk_2[:length_val]
 
-        # normalize
-        ldmk_1_normalized_l2 = preprocessing.normalize(ldmk_1, norm="l2")
-        ldmk_2_normalized_l2 = preprocessing.normalize(ldmk_2, norm="l2")
-        landmarks = [ldmk_1_normalized_l2, ldmk_2_normalized_l2]
+        # # normalize
+        # ldmk_1_normalized_l2 = preprocessing.normalize(ldmk_1, norm="l2")
+        # ldmk_2_normalized_l2 = preprocessing.normalize(ldmk_2, norm="l2")
+        # landmarks = [ldmk_1_normalized_l2, ldmk_2_normalized_l2]
 
-        # Cosine Similarity
-        cosine_sim = cosine_similarity(ldmk_1_normalized_l2, ldmk_2_normalized_l2)
-        # landmarks = [ldmk_1, ldmk_2]
+        # # Cosine Similarity
+        # cosine_sim = cosine_similarity(ldmk_1_normalized_l2, ldmk_2_normalized_l2)
+        # # landmarks = [ldmk_1, ldmk_2]
 
-        # cosine_sim = cosine_similarity(ldmk_1, ldmk_2)
+        cosine_sim = cosine_similarity(ldmk_1, ldmk_2)
         results = np.round_(np.diag(cosine_sim), 2)
         print("-----Results of Cosine Similarity-----")
         print(results)
         mean_score = np.mean(results)
         print(f"score: {str(round(mean_score*100, 1))}점")
 
-        return [mean_score, results, landmarks]
+        return [mean_score, results]        # , landmarks
 
 
 class PlotPose:
@@ -286,7 +290,8 @@ class PlotPose:
             # Quitting condition
             if cv2.waitKey(delay) == 27 & 0xFF == ord("q"):
                 break
-
+        
+        
         # Releasing resources
         out.release()
         cv2.destroyAllWindows()
@@ -304,21 +309,23 @@ def download_video(video_url, file_type):
     thumbnail_image_url = yt.thumbnail_url
     uploaded_date = yt.publish_date
     hits = yt.views
-
     # 영상 제목에서 키워드(#해시태그) 추출
     keywords = [x.strip().lower() for x in yt.title.split('#')][1:]
     print(keywords)
     for keyword in keywords:
-        if Tag.objects.filter(Q(name=keyword)) is not None:
+        if Tag.objects.filter(name=keyword):
             chl_name = keyword
             chl_tag = Tag.objects.get(name=keyword)
+            print(chl_tag.parent_tag_id)
+            print(chl_name)
             break
         else:
-            print("--------------챌린지를 찾을 수 없습니다.--------------")     # 직접 입력하도록 UI 구현 필요
-            pass
+            continue
+    if chl_name == None:
+        print("--------------챌린지를 찾을 수 없습니다.--------------")     # 직접 입력하도록 UI 구현 필요
 
     # 영상 제목 설정 후 지정된 경로에 저장
-    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
+    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + str(chl_tag.parent_tag_id) + "_" + str(channel_name)).replace(" ","")
     yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
     video_file_path = f"./temp/videos/{file_type}/{video_title}.mp4"
     

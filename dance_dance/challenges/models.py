@@ -4,9 +4,9 @@ from django.db import models
 # Create your models here.
 class OriginalVideo(models.Model):
     # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=32)
+    title = models.CharField(max_length=128)
     youtube_video_url = models.CharField(max_length=512)
-    channel_name = models.CharField(max_length=32)
+    channel_name = models.CharField(max_length=128)
     thumbnail_image_url = models.CharField(max_length=512)
     uploaded_at = models.DateTimeField()
 
@@ -26,9 +26,9 @@ class OriginalVideo(models.Model):
 
 class UserVideo(models.Model):
     # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
-    title = models.CharField(max_length=32)
+    title = models.CharField(max_length=128)
     youtube_video_url = models.CharField(max_length=512)
-    channel_name = models.CharField(max_length=32)
+    channel_name = models.CharField(max_length=128)
     thumbnail_image_url = models.CharField(max_length=512)
     uploaded_at = models.DateTimeField()
 
