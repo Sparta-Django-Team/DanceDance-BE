@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime
 
 import cv2
@@ -21,10 +22,46 @@ def createFolder(directory):
     except OSError:
         print("Error: Creating directory. " + directory)
 
+def match_sync(vpath_1, vpath_2):
+    # 비디오 파일 로드
+    video1 = mvp.VideoFileClip(vpath_1)
+    video2 = mvp.VideoFileClip(vpath_2)
 
-def get_landmarks(video_route, file_type):
+    # Audio 파일 경로 설정
+    mp3_file1 = "./temp/audios/audio_1.mp3"
+    mp3_file2 = "./temp/audios/audio_2.mp3"
+
+    createFolder("./temp/audios/")
+
+    # Audio 파일 생성
+    print("Creating Audio files...")
+    video1.audio.write_audiofile(mp3_file1)
+    video2.audio.write_audiofile(mp3_file2)
+
+    # Audio 파일 load
+    print("Loading audio files...")
+
+    y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
+    y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
+
+    # cross-correlation 계산
+    print("Calculating Cross-Correlation...")
+    correlation = np.correlate(y1, y2, mode="full")
+    peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
+    print("peak index: ", peak_index)
+
+    # sync 차이 계산 (peak 위치를 초 단위로 변환)
+    sync_difference_seconds = (peak_index - len(y2) + 1) / sr1
+    print(f"Sync difference: 약 {sync_difference_seconds:.2f}sec")
+    return sync_difference_seconds
+
+
+def get_landmarks(video_route, file_type, sync_difference_seconds):
     createFolder("./temp/landmarks/origin/")
     createFolder("./temp/landmarks/user/")
+    
+    if sync_difference_seconds < 0:
+        sync_difference_seconds = 0
 
     # clm_list 생성
     clm_list = ['idx']
@@ -62,7 +99,7 @@ def get_landmarks(video_route, file_type):
     extract_interval_frames = fps * extract_interval_seconds        # 0.1초마다 생성되는 프레임 수 (float : 2.997002997002997)
 
     frame_count = 0
-    sec = 0.0
+    sec = 0.0 + sync_difference_seconds 
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
         print("Extracting landmarks...")
 
@@ -112,41 +149,6 @@ def get_landmarks(video_route, file_type):
     df.to_csv(csv_path, index=False)
 
     return [output_video_path, csv_path]
-
-
-
-def match_sync(vpath_1, vpath_2):
-    # 비디오 파일 로드
-    video1 = mvp.VideoFileClip(vpath_1)
-    video2 = mvp.VideoFileClip(vpath_2)
-
-    # Audio 파일 경로 설정
-    mp3_file1 = "./temp/audios/audio_1.mp3"
-    mp3_file2 = "./temp/audios/audio_2.mp3"
-
-    createFolder("./temp/audios/")
-
-    # Audio 파일 생성
-    print("Creating Audio files...")
-    video1.audio.write_audiofile(mp3_file1)
-    video2.audio.write_audiofile(mp3_file2)
-
-    # Audio 파일 load
-    print("Loading audio files...")
-
-    y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
-    y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
-
-    # cross-correlation 계산
-    print("Calculating Cross-Correlation...")
-    correlation = np.correlate(y1, y2, mode="full")
-    peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
-    print("peak index: ", peak_index)
-
-    # sync 차이 계산 (peak 위치를 초 단위로 변환)
-    sync_difference_seconds = (peak_index - len(y2) + 1) / sr1
-    print(f"Sync difference: 약 {sync_difference_seconds:.2f}sec")
-    return sync_difference_seconds
 
 
 class GetScores:
@@ -335,14 +337,14 @@ def download_video(video_url, file_type):
         origin_video_tag = OriginalVideoTag.objects.select_related('original_video_id').get(tag_id=chl_tag.parent_tag_id)
         origin_video = origin_video_tag.original_video_id
         sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
-        outputs = get_landmarks(video_file_path, file_type)            # 영상 랜드마크 추출 : output_video_path, csv_path
+        outputs = get_landmarks(video_file_path, file_type, sync_difference_seconds)            # 영상 랜드마크 추출 : output_video_path, csv_path
         motion_data_path = outputs[1]        # 영상 랜드마크 csv 파일 저장 경로 변수 지정
         score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
         results['score'] = score_results[0]
         results['score_list'] = score_results[1]
         # results['is_rank] = rank 확인 함수 생성 후 추가
     elif file_type == "origin":
-        outputs = get_landmarks(video_file_path, file_type)            # 영상 랜드마크 추출 : output_video_path, csv_path
+        outputs = get_landmarks(video_file_path, file_type, 0)            # 영상 랜드마크 추출 : output_video_path, csv_path
         motion_data_path = outputs[1]        # 영상 랜드마크 csv 파일 저장 경로 변수 지정
         results["hits"] = hits
         results["video_file_path"] = video_file_path
