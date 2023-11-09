@@ -11,6 +11,8 @@ from pytube import YouTube
 from sklearn import preprocessing
 from sklearn.metrics.pairwise import cosine_similarity
 
+from django.db.models import Q
+from dance_dance.challenges.models import Tag, OriginalVideo, OriginalVideoTag
 
 def createFolder(directory):
     try:
@@ -68,7 +70,7 @@ def get_landmarks(video_route, file_type):
     # pose = mp_pose.Pose()
 
     # 랜드마크 추출 인터벌 설정
-    extract_interval_seconds = 0.05
+    extract_interval_seconds = 0.1
     extract_interval_frames = int(cap.get(cv2.CAP_PROP_FPS) * extract_interval_seconds)
 
     frame_count = 0
@@ -126,7 +128,7 @@ def get_landmarks(video_route, file_type):
     csv_path = f"./temp/landmarks/{file_type}/{title}.csv"
     df.to_csv(csv_path, index=False)
 
-    return output_video_path, csv_path
+    return [output_video_path, csv_path]
 
 
 
@@ -210,7 +212,7 @@ class GetScores:
         mean_score = np.mean(results)
         print(f"score: {str(round(mean_score*100, 1))}점")
 
-        return mean_score, results, landmarks
+        return [mean_score, results, landmarks]
 
 
 class PlotPose:
@@ -311,39 +313,57 @@ def download_video(video_url, file_type):
     now = datetime.now()
     DOWNLOAD_DIR = f"./temp/videos/{file_type}"
     yt = YouTube(video_url)
-    chl_name = str(yt.title.split("#")[1])
-    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
-    yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
-    video_route = f"./temp/videos/{file_type}/{video_title}.mp4"
+
     channel_name = yt.author
     thumbnail_image_url = yt.thumbnail_url
     uploaded_date = yt.publish_date
     hits = yt.views
-    keywords = yt.keywords
+
+    keywords = [x.strip() for x in yt.title.split('#')][1:]
+    print(keywords)
+    for keyword in keywords:
+        if Tag.objects.filter(Q(name=keyword)) is not None:
+            chl_name = keyword
+            print(chl_name)
+            # parent_tag = Tag.objects.filter(name=keyword)
+            chl_tag = Tag.objects.get(name=keyword)
+            print(chl_tag.parent_tag_id)
+            break
+        else:
+            print("--------------챌린지를 찾을 수 없습니다.--------------")
+            pass
+    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
+    yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
+    video_file_path = f"./temp/videos/{file_type}/{video_title}.mp4"
     
-    # --> get landmark and save csv file
-    output_video_path, csv_path = get_landmarks(video_route, file_type)
-    motion_data_url = csv_path
+    outputs = get_landmarks(video_file_path, file_type)            # output_video_path, csv_path
+    motion_data_path = outputs[1]
 
     # ★ uservideo
-    # DB에서 챌린지 이름이 동일한 origin video landmark를 찾고, 비교하는 로직 추가 필요
+    if file_type == "user":
+        # parent_tag_id = Tag.objects.filter(name=keyword)
+        origin_video_id = OriginalVideoTag.objects.get(tag_id=chl_tag.parent_tag_id).original_video_id
+        print(origin_video_id) 
+        # origin_video = OriginalVideo.objects.prefetch_related('original_video_tag').get(title=origin_video_id)
+        origin_video = OriginalVideo.objects.get(title=origin_video_id)
+        print(origin_video)
+        print(origin_video.video_file_path)
 
-    # score = 
-    # score_list = 
-    # # results에 download_result와 landmark 정보를 업데이트해야 함
-    # score = 
-    # score_list = 
+        sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
+        score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
+        score, score_list = score_results[0:2]
 
     results = {"title": video_title,
                "youtube_video_url": video_url,
                "channel_name": channel_name, 
                "thumbnail_image_url": thumbnail_image_url,
                "uploaded_at": uploaded_date,
-               "video_route": video_route, 
                "challenge_name": chl_name,
                "hits": hits,
-               "motion_data_url": motion_data_url,
+               "video_file_path": video_file_path,
+               "motion_data_path": motion_data_path,
                "keywords": keywords,
+               "score": score,
+               "score_list": score_list,
                }
-    print(results['keywords'])
     return results

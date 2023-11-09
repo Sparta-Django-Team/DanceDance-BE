@@ -8,15 +8,19 @@ class OriginalVideo(models.Model):
     youtube_video_url = models.CharField(max_length=512)
     channel_name = models.CharField(max_length=16)
     thumbnail_image_url = models.CharField(max_length=512)
-    motion_data_url = models.CharField(max_length=512, null=True)
     uploaded_at = models.DateTimeField()
     hits = models.IntegerField(default=0)
+    motion_data_path = models.CharField(max_length=512, null=True)
+    video_file_path = models.CharField(max_length=512, null=True)
     # likes = models.ManyToManyField(User, related_name="like_videos")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return str(self.title)
+    
+    class Meta:
+        db_table = "original_video"
 
 
 class UserVideo(models.Model):
@@ -56,6 +60,9 @@ class OriginalVideoTag(models.Model):
 
     def __str__(self):
         return "["+str(self.tag_id)+"]_"+str(self.original_video_id)
+
+    class Meta:
+        db_table = "original_video_tag"
 
 
 class UserVideoTag(models.Model):
