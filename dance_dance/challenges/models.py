@@ -6,9 +6,10 @@ class OriginalVideo(models.Model):
     # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=32)
     youtube_video_url = models.CharField(max_length=512)
-    channel_name = models.CharField(max_length=16)
+    channel_name = models.CharField(max_length=32)
     thumbnail_image_url = models.CharField(max_length=512)
     uploaded_at = models.DateTimeField()
+
     hits = models.IntegerField(default=0)
     motion_data_path = models.CharField(max_length=512, null=True)
     video_file_path = models.CharField(max_length=512, null=True)
@@ -27,9 +28,10 @@ class UserVideo(models.Model):
     # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=32)
     youtube_video_url = models.CharField(max_length=512)
-    channel_name = models.CharField(max_length=16)
+    channel_name = models.CharField(max_length=32)
     thumbnail_image_url = models.CharField(max_length=512)
     uploaded_at = models.DateTimeField()
+
     score = models.IntegerField(null=True)
     score_list = models.TextField(null=True)
     is_rank = models.BooleanField(default=False)

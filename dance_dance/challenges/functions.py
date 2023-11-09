@@ -319,18 +319,15 @@ def download_video(video_url, file_type):
     uploaded_date = yt.publish_date
     hits = yt.views
 
-    keywords = [x.strip() for x in yt.title.split('#')][1:]
+    keywords = [x.strip().lower() for x in yt.title.split('#')][1:]
     print(keywords)
     for keyword in keywords:
         if Tag.objects.filter(Q(name=keyword)) is not None:
             chl_name = keyword
-            print(chl_name)
-            # parent_tag = Tag.objects.filter(name=keyword)
             chl_tag = Tag.objects.get(name=keyword)
-            print(chl_tag.parent_tag_id)
             break
         else:
-            print("--------------챌린지를 찾을 수 없습니다.--------------")
+            print("--------------챌린지를 찾을 수 없습니다.--------------")     # 직접 입력하도록 UI 구현 필요
             pass
     video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
     yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
@@ -339,26 +336,27 @@ def download_video(video_url, file_type):
     outputs = get_landmarks(video_file_path, file_type)            # output_video_path, csv_path
     motion_data_path = outputs[1]
 
-    # ★ uservideo
-    if file_type == "user":
-        origin_video_tag = OriginalVideoTag.objects.select_related('original_video_id').get(tag_id=chl_tag.parent_tag_id)
-        origin_video = origin_video_tag.original_video_id
-
-        sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
-        score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
-        score, score_list = score_results[0:2]
-
     results = {"title": video_title,
                "youtube_video_url": video_url,
                "channel_name": channel_name, 
                "thumbnail_image_url": thumbnail_image_url,
                "uploaded_at": uploaded_date,
                "challenge_name": chl_name,
-               "hits": hits,
-               "video_file_path": video_file_path,
-               "motion_data_path": motion_data_path,
                "keywords": keywords,
-               "score": score,
-               "score_list": score_list,
                }
+
+    # ★ uservideo
+    if file_type == "user":
+        origin_video_tag = OriginalVideoTag.objects.select_related('original_video_id').get(tag_id=chl_tag.parent_tag_id)
+        origin_video = origin_video_tag.original_video_id
+        sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
+        score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
+        results['score'] = score_results[0]
+        results['score_list'] = score_results[1]
+        # results['is_rank] = rank 확인 함수 생성 후 추가
+
+    elif file_type == "origin":
+        results["hits"] = hits
+        results["video_file_path"] = video_file_path
+        results["motion_data_path"] = motion_data_path
     return results
