@@ -341,13 +341,8 @@ def download_video(video_url, file_type):
 
     # ★ uservideo
     if file_type == "user":
-        # parent_tag_id = Tag.objects.filter(name=keyword)
-        origin_video_id = OriginalVideoTag.objects.get(tag_id=chl_tag.parent_tag_id).original_video_id
-        print(origin_video_id) 
-        # origin_video = OriginalVideo.objects.prefetch_related('original_video_tag').get(title=origin_video_id)
-        origin_video = OriginalVideo.objects.get(title=origin_video_id)
-        print(origin_video)
-        print(origin_video.video_file_path)
+        origin_video_tag = OriginalVideoTag.objects.select_related('original_video_id').get(tag_id=chl_tag.parent_tag_id)
+        origin_video = origin_video_tag.original_video_id
 
         sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
         score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
