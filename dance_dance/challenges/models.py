@@ -32,7 +32,7 @@ class UserVideo(models.Model):
     thumbnail_image_url = models.CharField(max_length=512)
     uploaded_at = models.DateTimeField()
 
-    score = models.IntegerField(null=True)
+    score = models.FloatField(null=True)
     score_list = models.TextField(null=True)
     is_rank = models.BooleanField(default=False)
     # likes = models.ManyToManyField(User, related_name="like_videos")

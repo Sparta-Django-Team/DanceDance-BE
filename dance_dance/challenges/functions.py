@@ -47,21 +47,17 @@ def match_sync(vpath_1, vpath_2):
     print("Calculating Cross-Correlation...")
     correlation = np.correlate(y1, y2, mode="full")
     peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
-    # print("peak index: ", peak_index)
 
     # sync 차이 계산 (peak 위치를 초 단위로 변환)
-    sync_difference_seconds = round((peak_index - len(y2) + 1) / sr1 * 10, 2)
+    sync_difference_seconds = round((peak_index - len(y2) + 1) / sr1 * 10, 0)
     print(f"Sync difference: 약 {sync_difference_seconds:.2f} * 0.1 sec")
     return sync_difference_seconds
 
 
-def get_landmarks(video_route, file_type, sync_difference_seconds):
+def get_landmarks(video_route, file_type):
     createFolder("./temp/landmarks/origin/")
     createFolder("./temp/landmarks/user/")
     
-    if sync_difference_seconds < 0:
-        sync_difference_seconds = 0
-
     # clm_list 생성
     clm_list = ['idx']
     coordinates = ['x', 'y', 'z']
@@ -99,7 +95,7 @@ def get_landmarks(video_route, file_type, sync_difference_seconds):
     extract_interval_frames = fps * extract_interval_seconds        # 0.1초마다 생성되는 프레임 수 (float : 2.997002997002997)
 
     frame_count = 0
-    sec = 0.0 - sync_difference_seconds 
+    sec = 0.0
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
         print("Extracting landmarks...")
 
@@ -108,11 +104,12 @@ def get_landmarks(video_route, file_type, sync_difference_seconds):
             ret, img = cap.read()
             if not ret:
                 break
-            
+            progress_percentage = round(sec/(length/fps)*10, 0)
+            print("\r진행률: {}%".format(progress_percentage), end='', flush=True)
             frame_count += 1
             if frame_count // extract_interval_frames >= sec:
                 sec = round(sec + 1, 1)
-                print("진행률 :" + str(round(sec/(length/fps)*10, 1))+"%")
+                
                 img = cv2.resize(img, (200, 400)) 
                 results = pose.process(img)
                 x = [sec]
@@ -157,14 +154,12 @@ class GetScores:
         self.now = datetime.now()
 
     @staticmethod
-    def compare_videos(lpath_1, lpath_2, sync_difference_seconds):           # , sync_difference_seconds
-        diff = sync_difference_seconds
+    def compare_videos(lpath_1, lpath_2, sync_difference_seconds):
+        diff = int(sync_difference_seconds)
+        
         # load data
         data1 = pd.read_csv(lpath_1)
         data2 = pd.read_csv(lpath_2)
-
-        # ldmk_1 = np.array(pd.read_csv(lpath_1))
-        # ldmk_2 = np.array(pd.read_csv(lpath_2))
         
         if diff > 0:
             ldmk_1 = np.array(data1)[1 + diff :, 1:]
@@ -185,23 +180,16 @@ class GetScores:
         ldmk_1 = ldmk_1[:length_val]
         ldmk_2 = ldmk_2[:length_val]
 
-        # # normalize
-        # ldmk_1_normalized_l2 = preprocessing.normalize(ldmk_1, norm="l2")
-        # ldmk_2_normalized_l2 = preprocessing.normalize(ldmk_2, norm="l2")
-        # landmarks = [ldmk_1_normalized_l2, ldmk_2_normalized_l2]
-
-        # # Cosine Similarity
-        # cosine_sim = cosine_similarity(ldmk_1_normalized_l2, ldmk_2_normalized_l2)
-        # # landmarks = [ldmk_1, ldmk_2]
+        # normalize 진행 여부 검토!
 
         cosine_sim = cosine_similarity(ldmk_1, ldmk_2)
-        results = np.round_(np.diag(cosine_sim), 2)
+        results = np.round_(np.diag(cosine_sim), 2).tolist()
         print("-----Results of Cosine Similarity-----")
         print(results)
         mean_score = np.mean(results)
         print(f"score: {str(round(mean_score*100, 1))}점")
 
-        return [mean_score, results]        # , landmarks
+        return [mean_score, results]
 
 
 class PlotPose:
@@ -317,7 +305,6 @@ def download_video(video_url, file_type):
             chl_name = keyword
             chl_tag = Tag.objects.get(name=keyword)
             print(chl_tag.parent_tag_id)
-            print(chl_name)
             break
         else:
             continue
@@ -344,11 +331,11 @@ def download_video(video_url, file_type):
         origin_video_tag = OriginalVideoTag.objects.select_related('original_video_id').get(tag_id=chl_tag.parent_tag_id)
         origin_video = origin_video_tag.original_video_id
         sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
-        outputs = get_landmarks(video_file_path, file_type, sync_difference_seconds)            # 영상 랜드마크 추출 : output_video_path, csv_path
+        outputs = get_landmarks(video_file_path, file_type)            # 영상 랜드마크 추출 : output_video_path, csv_path
         motion_data_path = outputs[1]        # 영상 랜드마크 csv 파일 저장 경로 변수 지정
         score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
         results['score'] = score_results[0]
-        results['score_list'] = score_results[1]
+        results['score_list'] = ','.join(map(str, score_results[1]))
         # results['is_rank] = rank 확인 함수 생성 후 추가
     elif file_type == "origin":
         outputs = get_landmarks(video_file_path, file_type, 0)            # 영상 랜드마크 추출 : output_video_path, csv_path
