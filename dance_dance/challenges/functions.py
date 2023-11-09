@@ -23,15 +23,13 @@ def createFolder(directory):
 
 
 def get_landmarks(video_route, file_type):
-
     createFolder("./temp/landmarks/origin/")
     createFolder("./temp/landmarks/user/")
 
     # clm_list 생성
-    clm_list = []
+    clm_list = ['idx']
     coordinates = ['x', 'y', 'z']
     sides = ['l', 'r']
-    clm_list.append('idx')  # Adding 'idx' at the beginning of the list
     for body_part in ["shld", "elbw", "wrst", "hip", "knee", "ankl"]:
         for side in sides:
             for coordinate in coordinates:
@@ -42,10 +40,7 @@ def get_landmarks(video_route, file_type):
     mp_drawing_styles = mp.solutions.drawing_styles
     pose = mp_pose.Pose()
 
-    print(video_route)
     cap = cv2.VideoCapture(video_route)
-
-    # title = video_route.split('/')[-1].split('.')[0]
     title = os.path.splitext(os.path.basename(video_route))[0]
 
     # 새로운 비디오 생성을 위한 설정
@@ -55,26 +50,19 @@ def get_landmarks(video_route, file_type):
     output_video_path = f"./temp/videos/output/{file_type}/{title}_landmarks.mp4"
     fourcc = cv2.VideoWriter_fourcc(*"DIVX")
     fps = cap.get(cv2.CAP_PROP_FPS)
+    print("fps:"+str(fps))
     frame_size = (int(cap.get(3)), int(cap.get(4)))  # 원본 동영상의 크기로 프레임 크기 설정
 
     # 비디오 저장기 초기화
     out = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
     df = pd.DataFrame(columns=clm_list)  # 빈 dataframe 생성
-    # df = pd.DataFrame()        # 빈 dataframe 생성
-    # clm = pd.DataFrame(clm_list).T
-    # df = pd.concat([df, clm])
-
-    # mp_pose = mp.solutions.pose
-    # mp_draw = mp.solutions.drawing_utils
-    # mp_drawing_styles = mp.solutions.drawing_styles
-    # pose = mp_pose.Pose()
 
     # 랜드마크 추출 인터벌 설정
     extract_interval_seconds = 0.1
-    extract_interval_frames = int(cap.get(cv2.CAP_PROP_FPS) * extract_interval_seconds)
+    extract_interval_frames = fps * extract_interval_seconds        # 0.1초마다 생성되는 프레임 수 (float : 2.997002997002997)
 
     frame_count = 0
-
+    sec = 0.0
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
         print("Extracting landmarks...")
 
@@ -83,15 +71,13 @@ def get_landmarks(video_route, file_type):
             ret, img = cap.read()
             if not ret:
                 break
-
+            
             frame_count += 1
-
-            if frame_count % extract_interval_frames == 0:
-                # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            if frame_count // extract_interval_frames >= sec:
+                sec = round(sec + 1, 1)
                 img = cv2.resize(img, (200, 400))
-
                 results = pose.process(img)
-
+                
                 # 랜드마크 생성
                 if results.pose_landmarks:
                     mp_draw.draw_landmarks(
@@ -100,9 +86,7 @@ def get_landmarks(video_route, file_type):
                         mp_pose.POSE_CONNECTIONS,
                         landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style(),
                     )
-
-                    x = []
-                    x.append(str(frame_count // 3).split(".")[0])
+                    x = [sec]
                     for k in range(33):
                         if (11 <= k < 17) or (23 <= k < 29):
                             x.append(results.pose_landmarks.landmark[k].x)
@@ -113,16 +97,15 @@ def get_landmarks(video_route, file_type):
                     tmp = pd.DataFrame([x], columns=clm_list)
                     df = pd.concat([df, tmp])
 
-                ################################################### 랜드마크가 표시된 프레임을 저장
+                #랜드마크가 표시된 프레임을 저장
                 out.write(img)
-
                 cv2.imshow("Estimation", img)
                 cv2.waitKey(1)
 
     # 비디오 저장기 닫기
     cap.release()
     out.release()
-
+    
     cv2.destroyAllWindows()
 
     csv_path = f"./temp/landmarks/{file_type}/{title}.csv"
@@ -308,17 +291,19 @@ class PlotPose:
 
 
 
-
+# 영상 업로드, 랜드마크 
 def download_video(video_url, file_type):
     now = datetime.now()
     DOWNLOAD_DIR = f"./temp/videos/{file_type}"
     yt = YouTube(video_url)
 
+    # 유튜브 영상 정보 추출
     channel_name = yt.author
     thumbnail_image_url = yt.thumbnail_url
     uploaded_date = yt.publish_date
     hits = yt.views
 
+    # 영상 제목에서 키워드(#해시태그) 추출
     keywords = [x.strip().lower() for x in yt.title.split('#')][1:]
     print(keywords)
     for keyword in keywords:
@@ -329,13 +314,15 @@ def download_video(video_url, file_type):
         else:
             print("--------------챌린지를 찾을 수 없습니다.--------------")     # 직접 입력하도록 UI 구현 필요
             pass
+
+    # 영상 제목 설정 후 지정된 경로에 저장
     video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + chl_name).rstrip()
     yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
     video_file_path = f"./temp/videos/{file_type}/{video_title}.mp4"
     
-    outputs = get_landmarks(video_file_path, file_type)            # output_video_path, csv_path
-    motion_data_path = outputs[1]
 
+
+    # 결과 데이터 results의 각 인자로 저장
     results = {"title": video_title,
                "youtube_video_url": video_url,
                "channel_name": channel_name, 
@@ -344,19 +331,23 @@ def download_video(video_url, file_type):
                "challenge_name": chl_name,
                "keywords": keywords,
                }
-
-    # ★ uservideo
     if file_type == "user":
         origin_video_tag = OriginalVideoTag.objects.select_related('original_video_id').get(tag_id=chl_tag.parent_tag_id)
         origin_video = origin_video_tag.original_video_id
         sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
+        outputs = get_landmarks(video_file_path, file_type)            # 영상 랜드마크 추출 : output_video_path, csv_path
+        motion_data_path = outputs[1]        # 영상 랜드마크 csv 파일 저장 경로 변수 지정
         score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
         results['score'] = score_results[0]
         results['score_list'] = score_results[1]
         # results['is_rank] = rank 확인 함수 생성 후 추가
-
     elif file_type == "origin":
+        outputs = get_landmarks(video_file_path, file_type)            # 영상 랜드마크 추출 : output_video_path, csv_path
+        motion_data_path = outputs[1]        # 영상 랜드마크 csv 파일 저장 경로 변수 지정
         results["hits"] = hits
         results["video_file_path"] = video_file_path
         results["motion_data_path"] = motion_data_path
+
+        # Origin Video Tag도 해당 영상에 맞도록 자동으로 추가하는 로직 필요
+
     return results
