@@ -9,10 +9,11 @@ import numpy as np
 import pandas as pd
 from pytube import YouTube
 from sklearn.metrics.pairwise import cosine_similarity
+
+from dance_dance.challenges.models import OriginalVideoTag, Tag
+
 # import concurrent.futures : 병렬처리 코드 진행 중
 
-from django.db.models import Q
-from dance_dance.challenges.models import Tag, OriginalVideo, OriginalVideoTag
 
 def create_folder(directory):
     try:
@@ -20,6 +21,7 @@ def create_folder(directory):
             os.makedirs(directory)
     except OSError:
         print("Error: Creating directory. " + directory)
+
 
 def match_sync(vpath_1, vpath_2):
     # 비디오 파일 로드
@@ -56,11 +58,11 @@ def match_sync(vpath_1, vpath_2):
 def get_landmarks(video_route, file_type):
     create_folder("./temp/landmarks/origin/")
     create_folder("./temp/landmarks/user/")
-    
+
     # clm_list 생성
-    clm_list = ['idx']
-    coordinates = ['x', 'y', 'z']
-    sides = ['l', 'r']
+    clm_list = ["idx"]
+    coordinates = ["x", "y", "z"]
+    sides = ["l", "r"]
     for body_part in ["shld", "elbw", "wrst", "hip", "knee", "ankl"]:
         for side in sides:
             for coordinate in coordinates:
@@ -82,7 +84,7 @@ def get_landmarks(video_route, file_type):
     fourcc = cv2.VideoWriter_fourcc(*"DIVX")
     fps = cap.get(cv2.CAP_PROP_FPS)
     length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print("fps:"+str(fps))
+    print("fps:" + str(fps))
     frame_size = (int(cap.get(3)), int(cap.get(4)))  # 원본 동영상의 크기로 프레임 크기 설정
 
     # 비디오 저장기 초기화
@@ -91,7 +93,7 @@ def get_landmarks(video_route, file_type):
 
     # 랜드마크 추출 인터벌 설정
     extract_interval_seconds = 0.1
-    extract_interval_frames = fps * extract_interval_seconds        # 0.1초마다 생성되는 프레임 수 (float : 2.997002997002997)
+    extract_interval_frames = fps * extract_interval_seconds  # 0.1초마다 생성되는 프레임 수 (float : 2.997002997002997)
 
     frame_count = 0
     sec = 0.0
@@ -102,13 +104,13 @@ def get_landmarks(video_route, file_type):
             ret, img = cap.read()
             if not ret:
                 break
-            progress_percentage = round(sec/(length/fps)*10, 0)
-            print("\r진행률: {}%".format(progress_percentage), end='', flush=True)
+            progress_percentage = round(sec / (length / fps) * 10, 0)
+            print("\r진행률: {}%".format(progress_percentage), end="", flush=True)
             frame_count += 1
             if frame_count // extract_interval_frames >= sec:
                 sec = round(sec + 1, 1)
-                
-                img = cv2.resize(img, (200, 400)) 
+
+                img = cv2.resize(img, (200, 400))
                 results = pose.process(img)
                 x = [sec]
                 # 랜드마크 생성
@@ -130,7 +132,7 @@ def get_landmarks(video_route, file_type):
                         x.append(0.000)
                 tmp = pd.DataFrame([x], columns=clm_list)
                 df = pd.concat([df, tmp])
-                #랜드마크가 표시된 프레임을 저장
+                # 랜드마크가 표시된 프레임을 저장
                 out.write(img)
                 cv2.imshow("Estimation", img)
                 cv2.waitKey(1)
@@ -138,7 +140,7 @@ def get_landmarks(video_route, file_type):
     # 비디오 저장기 닫기
     cap.release()
     out.release()
-    
+
     cv2.destroyAllWindows()
 
     csv_path = f"./temp/landmarks/{file_type}/{title}.csv"
@@ -154,11 +156,11 @@ class GetScores:
     @staticmethod
     def compare_videos(lpath_1, lpath_2, sync_difference_seconds):
         diff = int(sync_difference_seconds)
-        
+
         # load data
         data1 = pd.read_csv(lpath_1)
         data2 = pd.read_csv(lpath_2)
-        
+
         if diff > 0:
             ldmk_1 = np.array(data1)[1 + diff :, 1:]
             ldmk_2 = np.array(data2)[1:, 1:]
@@ -188,8 +190,7 @@ class GetScores:
         return [mean_score, results]
 
 
-
-# 영상 업로드, 랜드마크 
+# 영상 업로드, 랜드마크
 def download_video(video_url, file_type):
     now = datetime.now()
     DOWNLOAD_DIR = f"./temp/videos/{file_type}"
@@ -200,9 +201,9 @@ def download_video(video_url, file_type):
     thumbnail_image_url = yt.thumbnail_url
     uploaded_date = yt.publish_date
     hits = yt.views
-    
+
     # 영상 제목에서 키워드(#해시태그) 추출
-    keywords = [x.strip().lower() for x in yt.title.split('#')][1:]
+    keywords = [x.strip().lower() for x in yt.title.split("#")][1:]
     print(keywords)
     for keyword in keywords:
         if Tag.objects.filter(name=keyword):
@@ -213,35 +214,39 @@ def download_video(video_url, file_type):
         else:
             continue
     if chl_name == None:
-        print("--------------챌린지를 찾을 수 없습니다.--------------")     # 직접 입력하도록 UI 구현 필요
+        print("--------------챌린지를 찾을 수 없습니다.--------------")  # 직접 입력하도록 UI 구현 필요
 
     # 영상 제목 설정 후 지정된 경로에 저장
-    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + str(chl_tag.parent_tag_id) + "_" + str(channel_name)).replace(" ","")
+    video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + str(chl_tag.parent_tag_id) + "_" + str(channel_name)).replace(" ", "")
     yt.streams.filter(res="360p", file_extension="mp4").first().download(output_path=DOWNLOAD_DIR, filename=f"{video_title}.mp4")
     video_file_path = f"./temp/videos/{file_type}/{video_title}.mp4"
 
     # 결과 데이터 results의 각 인자로 저장
-    results = {"title": video_title,
-               "youtube_video_url": video_url,
-               "channel_name": channel_name, 
-               "thumbnail_image_url": thumbnail_image_url,
-               "uploaded_at": uploaded_date,
-               "challenge_name": chl_name,
-               "keywords": keywords,
-               }
+    results = {
+        "title": video_title,
+        "youtube_video_url": video_url,
+        "channel_name": channel_name,
+        "thumbnail_image_url": thumbnail_image_url,
+        "uploaded_at": uploaded_date,
+        "challenge_name": chl_name,
+        "keywords": keywords,
+        "platform_type_id": 1,  # 1: Youtube
+    }
     if file_type == "user":
-        origin_video_tag = OriginalVideoTag.objects.select_related('original_video_id').get(tag_id=chl_tag.parent_tag_id)
+        origin_video_tag = OriginalVideoTag.objects.select_related("original_video_id").get(tag_id=chl_tag.parent_tag_id)
         origin_video = origin_video_tag.original_video_id
         sync_difference_seconds = match_sync(origin_video.video_file_path, video_file_path)
-        outputs = get_landmarks(video_file_path, file_type)            # 영상 랜드마크 추출 : output_video_path, csv_path
-        motion_data_path = outputs[1]        # 영상 랜드마크 csv 파일 저장 경로 변수 지정
-        score_results = GetScores.compare_videos(origin_video.motion_data_path, motion_data_path, sync_difference_seconds)  # mean_score, results, landmarks
-        results['score'] = score_results[0]
-        results['score_list'] = ','.join(map(str, score_results[1]))
+        outputs = get_landmarks(video_file_path, file_type)  # 영상 랜드마크 추출 : output_video_path, csv_path
+        motion_data_path = outputs[1]  # 영상 랜드마크 csv 파일 저장 경로 변수 지정
+        score_results = GetScores.compare_videos(
+            origin_video.motion_data_path, motion_data_path, sync_difference_seconds
+        )  # mean_score, results, landmarks
+        results["score"] = score_results[0]
+        results["score_list"] = ",".join(map(str, score_results[1]))
         # results['is_rank] = rank 확인 함수 생성 후 추가
     elif file_type == "origin":
-        outputs = get_landmarks(video_file_path, file_type, 0)            # 영상 랜드마크 추출 : output_video_path, csv_path
-        motion_data_path = outputs[1]        # 영상 랜드마크 csv 파일 저장 경로 변수 지정
+        outputs = get_landmarks(video_file_path, file_type, 0)  # 영상 랜드마크 추출 : output_video_path, csv_path
+        motion_data_path = outputs[1]  # 영상 랜드마크 csv 파일 저장 경로 변수 지정
         results["hits"] = hits
         results["video_file_path"] = video_file_path
         results["motion_data_path"] = motion_data_path

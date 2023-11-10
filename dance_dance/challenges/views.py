@@ -1,16 +1,18 @@
-import glob
+import json
 
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from dance_dance.challenges.models import OriginalVideo, UserVideo, Tag
-from dance_dance.challenges.serializers import UserVideoSerializer, OriginalVideoSerializer, TagCreateSerializer
+from dance_dance.challenges.functions import download_video
+from dance_dance.challenges.models import UserVideo
+from dance_dance.challenges.serializers import (
+    OriginalVideoSerializer,
+    TagCreateSerializer,
+    UserVideoSerializer,
+)
 
-from dance_dance.challenges.functions import createFolder, download_video, get_landmarks
-
-import json
 
 # Create your views here.
 class VideoListView(APIView):
@@ -39,21 +41,22 @@ class VideoLikeView(APIView):
 
 
 class VideoLoadView(APIView):
-    def post(self, request, file_type):         # file_type은 origin or user만 사용하도록 선택하게끔 한다
-        if request.method == 'POST':
+    def post(self, request, file_type):  # file_type은 origin or user만 사용하도록 선택하게끔 한다
+        if request.method == "POST":
             data = json.loads(request.body)
-            video_url = data['video_url']
+            video_url = data["video_url"]
         results = download_video(video_url, file_type)
 
-        if file_type == 'origin':
+        if file_type == "origin":
             serializer = OriginalVideoSerializer(data=results)
-        elif file_type == 'user':
+        elif file_type == "user":
             serializer = UserVideoSerializer(data=results)
 
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class TagCreateView(APIView):
     def post(self, request):

@@ -2,8 +2,16 @@ from django.db import models
 
 
 # Create your models here.
+class PlatformType(models.Model):
+    name = models.CharField(max_length=16)
+    description = models.CharField(max_length=32, null=True)
+
+    def __str__(self):
+        return str(self.name)
+
+
 class OriginalVideo(models.Model):
-    # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
+    platform_type_id = models.ForeignKey(PlatformType, on_delete=models.CASCADE, null=True)
     title = models.CharField(max_length=128)
     youtube_video_url = models.CharField(max_length=512)
     channel_name = models.CharField(max_length=128)
@@ -19,13 +27,13 @@ class OriginalVideo(models.Model):
 
     def __str__(self):
         return str(self.title)
-    
+
     class Meta:
         db_table = "original_video"
 
 
 class UserVideo(models.Model):
-    # platform_type_id = models.ForeignKeY(User, on_delete=models.CASCADE)
+    platform_type_id = models.ForeignKey(PlatformType, on_delete=models.CASCADE, null=True)
     title = models.CharField(max_length=128)
     youtube_video_url = models.CharField(max_length=512)
     channel_name = models.CharField(max_length=128)
@@ -43,14 +51,9 @@ class UserVideo(models.Model):
         return str(self.title)
 
 
-class PlatformType(models.Model):
-    name = models.CharField(max_length=16)
-    description = models.CharField(max_length=32, null=True)
-
-
 class Tag(models.Model):
     name = models.CharField(max_length=64)
-    parent_tag_id = models.ForeignKey('self', on_delete=models.CASCADE, null=True)
+    parent_tag_id = models.ForeignKey("self", on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return str(self.name)
@@ -61,7 +64,7 @@ class OriginalVideoTag(models.Model):
     tag_id = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name="original_video_tag")
 
     def __str__(self):
-        return "["+str(self.tag_id)+"]_"+str(self.original_video_id)
+        return "[" + str(self.tag_id) + "]_" + str(self.original_video_id)
 
     class Meta:
         db_table = "original_video_tag"
@@ -72,7 +75,7 @@ class UserVideoTag(models.Model):
     tag_id = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name="user_video_tag")
 
     def __str__(self):
-        return "["+str(self.tag_id)+"]_"+str(self.user_video_id)
+        return "[" + str(self.tag_id) + "]_" + str(self.user_video_id)
 
 
 class OriginalVideoLikesLog(models.Model):
