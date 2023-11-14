@@ -229,7 +229,7 @@ def download_video(video_url, file_type):
         "thumbnail_image_url": thumbnail_image_url,
         "uploaded_at": uploaded_date,
         "challenge_name": chl_name,
-        "keywords": keywords,
+        "tags": keywords,
         "platform_type_id": 1,  # 1: Youtube
     }
     if file_type == "user":

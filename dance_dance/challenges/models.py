@@ -45,6 +45,7 @@ class UserVideo(models.Model):
     # likes = models.ManyToManyField(User, related_name="like_videos")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    tags = models.TextField(null=True)
 
     def __str__(self):
         return str(self.title)
