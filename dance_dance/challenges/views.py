@@ -3,7 +3,6 @@ import json
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from dance_dance.challenges.functions import download_video
@@ -14,6 +13,7 @@ from dance_dance.challenges.serializers import (
     UserVideoSerializer,
 )
 from dance_dance.common.pagination import PaginationHandlerMixin
+from dance_dance.common.response import create_response
 
 
 class VideoListPagination(PageNumberPagination):
@@ -28,14 +28,14 @@ class VideoListView(PaginationHandlerMixin, APIView):
         print(user_videos)
         page = self.paginate_queryset(user_videos)
         serializer = self.get_paginated_response(UserVideoSerializer(page, many=True).data)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return create_response(serializer.data, status_code=status.HTTP_200_OK)
 
 
 class VideoDetailView(APIView):
     def get(self, request, video_id):
         video = get_object_or_404(UserVideo, id=video_id)
         serializer = UserVideoSerializer(video)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return create_response(serializer.data, status_code=status.HTTP_200_OK)
 
 
 class VideoLikeView(APIView):
@@ -43,10 +43,10 @@ class VideoLikeView(APIView):
         video = get_object_or_404(UserVideo, id=video_id)
         if request.user in video.likes.all():
             video.likes.remove(request.user)
-            return Response("좋아요를 취소했습니다.", status=status.HTTP_200_OK)
+            return create_response("좋아요를 취소했습니다.", status_code=status.HTTP_200_OK)
         else:
             video.likes.add(request.user)
-            return Response("좋아요 했습니다.", status=status.HTTP_200_OK)
+            return create_response("좋아요 했습니다.", status_code=status.HTTP_200_OK)
 
 
 class VideoLoadView(APIView):
@@ -63,8 +63,8 @@ class VideoLoadView(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return create_response(serializer.data, status_code=status.HTTP_201_CREATED)
+        return create_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
 
 class TagCreateView(APIView):
@@ -72,6 +72,6 @@ class TagCreateView(APIView):
         serializer = TagCreateSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            return create_response(serializer.data, status_code=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return create_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
