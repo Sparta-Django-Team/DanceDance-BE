@@ -2,6 +2,7 @@ import json
 
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -12,12 +13,21 @@ from dance_dance.challenges.serializers import (
     TagCreateSerializer,
     UserVideoSerializer,
 )
+from dance_dance.common.pagination import PaginationHandlerMixin
 
 
-class VideoListView(APIView):
+class VideoListPagination(PageNumberPagination):
+    page_size = 1
+
+
+class VideoListView(PaginationHandlerMixin, APIView):
+    pagination_class = VideoListPagination
+
     def get(self, request):
         user_videos = UserVideo.objects.all()
-        serializer = UserVideoSerializer(user_videos, many=True)
+        print(user_videos)
+        page = self.paginate_queryset(user_videos)
+        serializer = self.get_paginated_response(UserVideoSerializer(page, many=True).data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
