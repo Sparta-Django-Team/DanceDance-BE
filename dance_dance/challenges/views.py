@@ -14,7 +14,6 @@ from dance_dance.challenges.serializers import (
 )
 
 
-# Create your views here.
 class VideoListView(APIView):
     def get(self, request):
         user_videos = UserVideo.objects.all()

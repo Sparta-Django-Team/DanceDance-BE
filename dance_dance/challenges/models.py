@@ -1,7 +1,6 @@
 from django.db import models
 
 
-# Create your models here.
 class PlatformType(models.Model):
     name = models.CharField(max_length=16)
     description = models.CharField(max_length=32, null=True)

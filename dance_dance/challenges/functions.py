@@ -245,12 +245,12 @@ def download_video(video_url, file_type):
         results["score_list"] = ",".join(map(str, score_results[1]))
         # results['is_rank] = rank 확인 함수 생성 후 추가
     elif file_type == "origin":
-        outputs = get_landmarks(video_file_path, file_type, 0)  # 영상 랜드마크 추출 : output_video_path, csv_path
+        outputs = get_landmarks(video_file_path, file_type)  # 영상 랜드마크 추출 : output_video_path, csv_path
         motion_data_path = outputs[1]  # 영상 랜드마크 csv 파일 저장 경로 변수 지정
         results["hits"] = hits
         results["video_file_path"] = video_file_path
         results["motion_data_path"] = motion_data_path
-
+        results["platform_type_id"] = 1
         # Origin Video Tag도 해당 영상에 맞도록 자동으로 추가하는 로직 필요
 
     return results

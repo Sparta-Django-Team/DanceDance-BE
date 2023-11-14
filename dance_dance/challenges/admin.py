@@ -11,7 +11,6 @@ from dance_dance.challenges.models import (
     UserVideoTag,
 )
 
-# Register your models here.
 admin.site.register(OriginalVideo)
 admin.site.register(UserVideo)
 admin.site.register(PlatformType)
