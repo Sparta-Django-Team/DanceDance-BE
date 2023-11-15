@@ -75,3 +75,14 @@ class TagCreateView(APIView):
             return create_response(serializer.data, status_code=status.HTTP_200_OK)
         else:
             return create_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+
+
+class VideoLikeView(APIView):
+    def post(self, request, article_id):
+        video = get_object_or_404(UserVideo, id=article_id)
+        if request.user in video.likes.all():
+            video.likes.remove(request.user)
+            return create_response("unlike", status_code=status.HTTP_200_OK)
+        else:
+            video.likes.add(request.user)
+            return create_response("like", status_code=status.HTTP_200_OK)

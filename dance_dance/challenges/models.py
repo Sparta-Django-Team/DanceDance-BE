@@ -1,5 +1,7 @@
 from django.db import models
 
+from dance_dance.users.models import User
+
 
 class PlatformType(models.Model):
     name = models.CharField(max_length=16)
@@ -20,7 +22,6 @@ class OriginalVideo(models.Model):
     hits = models.IntegerField(default=0)
     motion_data_path = models.CharField(max_length=512, null=True)
     video_file_path = models.CharField(max_length=512, null=True)
-    # likes = models.ManyToManyField(User, related_name="like_videos")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -39,7 +40,7 @@ class UserVideo(models.Model):
     score = models.FloatField(null=True)
     score_list = models.TextField(null=True)
     is_rank = models.BooleanField(default=False)
-    # likes = models.ManyToManyField(User, related_name="like_videos")
+    likes = models.ManyToManyField(User, related_name="like_videos", null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     tags = models.TextField(null=True)
@@ -73,14 +74,13 @@ class UserVideoTag(models.Model):
 
 
 class OriginalVideoLikesLog(models.Model):
-    # user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     original_video_id = models.ForeignKey(OriginalVideo, on_delete=models.CASCADE)
     is_liked = models.BooleanField(null=False)
     updated_at = models.DateTimeField(auto_now=True)
 
 
 class UserVideoLikesLog(models.Model):
-    # user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     user_video_id = models.ForeignKey(OriginalVideo, on_delete=models.CASCADE)
     is_liked = models.BooleanField(null=False)
     updated_at = models.DateTimeField(auto_now=True)
