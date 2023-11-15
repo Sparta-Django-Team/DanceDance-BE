@@ -78,8 +78,8 @@ class TagCreateView(APIView):
 
 
 class VideoLikeView(APIView):
-    def post(self, request, article_id):
-        video = get_object_or_404(UserVideo, id=article_id)
+    def post(self, request, video_id):
+        video = get_object_or_404(UserVideo, id=video_id)
         if request.user in video.likes.all():
             video.likes.remove(request.user)
             return create_response("unlike", status_code=status.HTTP_200_OK)
