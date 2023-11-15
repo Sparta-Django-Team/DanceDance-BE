@@ -27,9 +27,6 @@ class OriginalVideo(models.Model):
     def __str__(self):
         return str(self.title)
 
-    class Meta:
-        db_table = "original_video"
-
 
 class UserVideo(models.Model):
     platform_type_id = models.ForeignKey(PlatformType, on_delete=models.CASCADE, null=True)
@@ -53,7 +50,7 @@ class UserVideo(models.Model):
 
 class Tag(models.Model):
     name = models.CharField(max_length=64)
-    parent_tag_id = models.ForeignKey("self", on_delete=models.CASCADE, null=True)
+    parent_tag_id = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return str(self.name)
@@ -65,9 +62,6 @@ class OriginalVideoTag(models.Model):
 
     def __str__(self):
         return "[" + str(self.tag_id) + "]_" + str(self.original_video_id)
-
-    class Meta:
-        db_table = "original_video_tag"
 
 
 class UserVideoTag(models.Model):
