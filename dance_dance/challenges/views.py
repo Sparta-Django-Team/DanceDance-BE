@@ -40,6 +40,7 @@ class VideoDetailView(APIView):
 
 class VideoLikeView(APIView):
     def post(self, request, video_id):
+        # if        # User or Original 구분
         video = get_object_or_404(UserVideo, id=video_id)
         if request.user in video.likes.all():
             video.likes.remove(request.user)
