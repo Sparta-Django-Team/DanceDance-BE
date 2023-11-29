@@ -40,7 +40,7 @@ class UserVideo(models.Model):
     score = models.FloatField(null=True)
     score_list = models.TextField(null=True)
     is_rank = models.BooleanField(default=False)
-    likes = models.ManyToManyField(User, related_name="like_videos", null=True)
+    likes = models.ManyToManyField(User, related_name="like_videos")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     tags = models.TextField(null=True)
