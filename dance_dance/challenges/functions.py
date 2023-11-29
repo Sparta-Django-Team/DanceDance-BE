@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime
 
@@ -13,6 +14,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from dance_dance.challenges.models import OriginalVideoTag, Tag
 
 # import concurrent.futures : 병렬처리 코드 진행 중
+logger = logging.getLogger("django")
 
 
 def create_folder(directory):
@@ -20,7 +22,7 @@ def create_folder(directory):
         if not os.path.exists(directory):
             os.makedirs(directory)
     except OSError:
-        print("Error: Creating directory. " + directory)
+        logger.info("Error: Creating directory. " + directory)
 
 
 def match_sync(vpath_1, vpath_2):
@@ -35,23 +37,23 @@ def match_sync(vpath_1, vpath_2):
     create_folder("./temp/audios/")
 
     # Audio 파일 생성
-    print("Creating Audio files...")
+    logger.info("Creating Audio files...")
     video1.audio.write_audiofile(mp3_file1)
     video2.audio.write_audiofile(mp3_file2)
 
     # Audio 파일 load
-    print("Loading audio files...")
+    logger.info("Loading audio files...")
     y1, sr1 = librosa.load(mp3_file1, offset=5, duration=10)
     y2, sr2 = librosa.load(mp3_file2, offset=5, duration=10)
 
     # cross-correlation 계산
-    print("Calculating Cross-Correlation...")
+    logger.info("Calculating Cross-Correlation...")
     correlation = np.correlate(y1, y2, mode="full")
     peak_index = np.argmax(correlation)  # peak index (correlation이 가장 큰 지점의 인덱스)
 
     # sync 차이 계산 (peak 위치를 초 단위로 변환)
     sync_difference_seconds = round((peak_index - len(y2) + 1) / sr1 * 10, 0)
-    print(f"Sync difference: 약 {sync_difference_seconds:.2f} * 0.1 sec")
+    logger.info(f"Sync difference: 약 {sync_difference_seconds:.2f} * 0.1 sec")
     return sync_difference_seconds
 
 
@@ -84,7 +86,7 @@ def get_landmarks(video_route, file_type):
     fourcc = cv2.VideoWriter_fourcc(*"DIVX")
     fps = cap.get(cv2.CAP_PROP_FPS)
     length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    print("fps:" + str(fps))
+    logger.info("fps:" + str(fps))
     frame_size = (int(cap.get(3)), int(cap.get(4)))  # 원본 동영상의 크기로 프레임 크기 설정
 
     # 비디오 저장기 초기화
@@ -98,7 +100,7 @@ def get_landmarks(video_route, file_type):
     frame_count = 0
     sec = 0.0
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
-        print("Extracting landmarks...")
+        logger.info("Extracting landmarks...")
         # while True:
         while cap.isOpened():
             ret, img = cap.read()
@@ -145,7 +147,7 @@ def get_landmarks(video_route, file_type):
 
     csv_path = f"./temp/landmarks/{file_type}/{title}.csv"
     df.to_csv(csv_path, index=False)
-
+    logger.info("Complete creating landmarks...")
     return [output_video_path, csv_path]
 
 
@@ -173,19 +175,19 @@ class GetScores:
 
         r1, c1 = ldmk_1.shape
         r2, c2 = ldmk_2.shape
-        print(f"r1, c1: {r1}, {c1}\nr2, c2: {r2}, {c2}")
+        logger.info(f"r1, c1: {r1}, {c1}\nr2, c2: {r2}, {c2}")
 
         length_val = min(r1, r2)
-        print(f"length of landmarks: {length_val}")
+        logger.info(f"length of landmarks: {length_val}")
         ldmk_1 = ldmk_1[:length_val]
         ldmk_2 = ldmk_2[:length_val]
 
         cosine_sim = cosine_similarity(ldmk_1, ldmk_2)
         results = np.round_(np.diag(cosine_sim), 2).tolist()
-        print("-----Results of Cosine Similarity-----")
-        print(results)
+        logger.info("-----Results of Cosine Similarity-----")
+        logger.info(results)
         mean_score = np.mean(results)
-        print(f"score: {str(round(mean_score*100, 1))}점")
+        logger.info(f"score: {str(round(mean_score*100, 1))}점")
 
         return [mean_score, results]
 
@@ -204,17 +206,17 @@ def download_video(video_url, file_type):
 
     # 영상 제목에서 키워드(#해시태그) 추출
     keywords = [x.strip().lower() for x in yt.title.split("#")][1:]
-    print(keywords)
+    logger.info(keywords)
     for keyword in keywords:
         if Tag.objects.filter(name=keyword):
             chl_name = keyword
             chl_tag = Tag.objects.get(name=keyword)
-            print(chl_tag.parent_tag_id)
+            logger.info(chl_tag.parent_tag_id)
             break
         else:
             continue
     if chl_name == None:
-        print("--------------챌린지를 찾을 수 없습니다.--------------")  # 직접 입력하도록 UI 구현 필요
+        logger.info("--------------챌린지를 찾을 수 없습니다.--------------")  # 직접 입력하도록 UI 구현 필요
 
     # 영상 제목 설정 후 지정된 경로에 저장
     video_title = (str(now.strftime("%Y%m%d%H%M")) + "_" + str(chl_tag.parent_tag_id) + "_" + str(channel_name)).replace(" ", "")

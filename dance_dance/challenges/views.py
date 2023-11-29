@@ -35,7 +35,7 @@ class VideoListView(PaginationHandlerMixin, APIView):
     )
     def get(self, request):
         user_videos = UserVideo.objects.all()
-        print(user_videos)
+        logger.info(user_videos)
         page = self.paginate_queryset(user_videos)
         serializer = self.get_paginated_response(UserVideoSerializer(page, many=True).data)
         return create_response(serializer.data, status_code=status.HTTP_200_OK)
@@ -87,12 +87,10 @@ class VideoLoadView(APIView):
             data = json.loads(request.body)
             video_url = data["video_url"]
         results = download_video(video_url, file_type)
-
         if file_type == "origin":
             serializer = OriginalVideoSerializer(data=results)
         elif file_type == "user":
             serializer = UserVideoSerializer(data=results)
-
         if serializer.is_valid():
             serializer.save()
             return create_response(serializer.data, status_code=status.HTTP_201_CREATED)
