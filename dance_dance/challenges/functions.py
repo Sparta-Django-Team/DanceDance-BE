@@ -229,7 +229,7 @@ def download_video(video_url, file_type):
         "thumbnail_image_url": thumbnail_image_url,
         "uploaded_at": uploaded_date,
         "challenge_name": chl_name,
-        "tags": keywords,
+        "tags": ",".join(str(s) for s in keywords),
         "platform_type_id": 1,  # 1: Youtube
     }
     if file_type == "user":
@@ -250,7 +250,7 @@ def download_video(video_url, file_type):
         results["hits"] = hits
         results["video_file_path"] = video_file_path
         results["motion_data_path"] = motion_data_path
-        results["platform_type_id"] = 1
+        results["platform_type_id"] = 1  # 현재 유튜브 영상(1번)만 Test 중
         # Origin Video Tag도 해당 영상에 맞도록 자동으로 추가하는 로직 필요
 
     return results
