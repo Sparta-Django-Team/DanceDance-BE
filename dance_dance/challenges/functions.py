@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import datetime
 
 import cv2
@@ -13,7 +14,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from dance_dance.challenges.models import OriginalVideoTag, Tag
 
-# import concurrent.futures : 병렬처리 코드 진행 중
 logger = logging.getLogger("django")
 
 
@@ -194,6 +194,7 @@ class GetScores:
 
 # 영상 업로드, 랜드마크
 def download_video(video_url, file_type):
+    start_time = time.time()
     now = datetime.now()
     DOWNLOAD_DIR = f"./temp/videos/{file_type}"
     yt = YouTube(video_url)
@@ -255,4 +256,7 @@ def download_video(video_url, file_type):
         results["platform_type_id"] = 1  # 현재 유튜브 영상(1번)만 Test 중
         # Origin Video Tag도 해당 영상에 맞도록 자동으로 추가하는 로직 필요
 
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    logger.info(f"Elapsed time: {elapsed_time:.1f} seconds")
     return results

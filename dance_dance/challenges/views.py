@@ -1,4 +1,5 @@
 import json
+import time
 
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -83,6 +84,7 @@ class VideoLoadView(APIView):
         operation_summary="비디오 로드 및 Score 추출",
     )
     def post(self, request, file_type):  # file_type은 origin or user만 사용하도록 선택하게끔 한다
+        start_time = time.time()
         if request.method == "POST":
             data = json.loads(request.body)
             video_url = data["video_url"]
@@ -93,6 +95,9 @@ class VideoLoadView(APIView):
             serializer = UserVideoSerializer(data=results)
         if serializer.is_valid():
             serializer.save()
+
+            end_time = time.time()
+            print(f"Elapsed time: {end_time - start_time} seconds")
             return create_response(serializer.data, status_code=status.HTTP_201_CREATED)
         return create_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
