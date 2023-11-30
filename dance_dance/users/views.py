@@ -212,3 +212,29 @@ class FollowView(APIView):
             return Response(response_data, status=status.HTTP_200_OK)
 
         return Response({"message": "본인은 팔로우 할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class FollowingListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="유저 팔로잉 리스트",
+        responses={200: "성공", 404: "찾을 수 없음", 500: "서버 에러"},
+    )
+    def get(self, request, following_id):
+        following_list = Follow.objects.filter(follower__id=following_id, is_followed=True).order_by("-created_at")
+        serializer = FollowSerializer(following_list, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class FollowerListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="유저 팔로워 리스트",
+        responses={200: "성공", 404: "찾을 수 없음", 500: "서버 에러"},
+    )
+    def get(self, request, follower_id):
+        follower_list = Follow.objects.filter(following__id=follower_id, is_followed=True).order_by("-created_at")
+        serializer = FollowSerializer(follower_list, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
