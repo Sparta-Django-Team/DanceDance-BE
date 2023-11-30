@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from dance_dance.common.exception.exceptions import ValidationErrorException
-from dance_dance.users.models import User
+from dance_dance.users.models import Follow, User
 from dance_dance.users.validations import nickname_validator, password_validator
 
 
@@ -109,3 +109,9 @@ class KakaoInputSerializer(serializers.Serializer):
 class KakaoOutputSerializer(serializers.Serializer):
     access_token = serializers.CharField()
     refresh_token = serializers.CharField()
+
+
+class FollowSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Follow
+        fields = ("id", "follower", "following", "is_followed", "updated_at")
