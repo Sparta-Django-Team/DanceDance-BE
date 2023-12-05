@@ -39,7 +39,7 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_admin(self, email: str, password: str, nickname: str, **extra_fields):
+    def create_superuser(self, email: str, password: str, nickname: str, **extra_fields):
         email = self.normalize_email(email)
         user = self.model(
             email=email,

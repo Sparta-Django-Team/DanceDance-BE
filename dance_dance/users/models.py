@@ -1,4 +1,3 @@
-# Create your models here.
 from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 
@@ -31,6 +30,12 @@ class User(AbstractBaseUser, BaseModel):
 
     def __str__(self):
         return f"[{self.id}]: {self.email}"
+
+    def has_perm(self, perm, obj=None):
+        return True
+
+    def has_module_perms(self, app_label):
+        return True
 
     @property
     def is_staff(self):
