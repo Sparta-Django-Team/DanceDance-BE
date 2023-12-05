@@ -2,7 +2,8 @@ from django.shortcuts import redirect
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from rest_framework.generics import get_object_or_404
+from rest_framework.generics import ListAPIView, get_object_or_404
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -214,7 +215,14 @@ class FollowView(APIView):
         return Response({"message": "본인은 팔로우 할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-class FollowingListView(APIView):
+# 페이지네이션 LimitOffsetPagination
+class BaseFollowListView(ListAPIView):
+    queryset = Follow.objects.all()
+    serializer_class = FollowSerializer
+    pagination_class = LimitOffsetPagination
+
+
+class FollowingListView(BaseFollowListView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
@@ -227,7 +235,7 @@ class FollowingListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class FollowerListView(APIView):
+class FollowerListView(BaseFollowListView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
