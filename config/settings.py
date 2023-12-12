@@ -30,6 +30,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "dance_dance.users.apps.UsersConfig",
     "dance_dance.common.apps.CommonConfig",
+    "dance_dance.challenges.apps.ChallengesConfig",
 ]
 
 INSTALLED_APPS = [
