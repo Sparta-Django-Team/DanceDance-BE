@@ -22,6 +22,12 @@ class User(AbstractBaseUser, BaseModel):
         null=True,
         related_name="users",
     )
+    follow = models.ForeignKey(
+        "Follow",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="users",
+    )
 
     objects = UserManager()
 
@@ -51,3 +57,15 @@ class UserSocialProvider(SimpleModel):
 
     class Meta:
         db_table = "user_social_provider"
+
+
+class Follow(BaseModel):
+    follower = models.ForeignKey("User", related_name="following", on_delete=models.CASCADE)
+    following = models.ForeignKey("User", related_name="followers", on_delete=models.CASCADE)
+    is_followed = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.follower} is following {self.following}"
+
+    class Meta:
+        db_table = "follow"

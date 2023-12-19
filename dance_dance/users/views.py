@@ -2,7 +2,8 @@ from django.shortcuts import redirect
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from rest_framework.generics import get_object_or_404
+from rest_framework.generics import ListAPIView, get_object_or_404
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -18,8 +19,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from dance_dance.common.exception.exceptions import AuthenticationFailedException
 from dance_dance.common.response import create_response
 from dance_dance.users.kakao_oauth import KakaoLoginFlowService
-from dance_dance.users.models import User
+from dance_dance.users.models import Follow, User
 from dance_dance.users.serializers import (
+    FollowSerializer,
     KakaoInputSerializer,
     KakaoOutputSerializer,
     SignupSerializer,
@@ -177,3 +179,70 @@ class UserDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return create_response(data=serializer.data, status_code=status.HTTP_200_OK)
+
+
+class FollowView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        tags=["유저"],
+        operation_summary="팔로우",
+        responses={
+            status.HTTP_200_OK: "성공",
+            status.HTTP_400_BAD_REQUEST: "인풋값 에러",
+            status.HTTP_401_UNAUTHORIZED: "인증 오류",
+            status.HTTP_404_NOT_FOUND: "찾을 수 없음",
+            status.HTTP_500_INTERNAL_SERVER_ERROR: "서버 에러",
+        },
+    )
+    def post(self, request, followed_id):
+        you = get_object_or_404(User, id=followed_id)
+        me = request.user
+
+        if me != you:
+            follow_instance, created = Follow.objects.get_or_create(follower=me, following=you)
+
+            if not created:
+                # 팔로우가 이미 존재하면 업데이트
+                follow_instance.is_followed = not follow_instance.is_followed
+                follow_instance.save()
+
+            serializer = FollowSerializer(follow_instance)
+            response_data = serializer.data
+
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        return Response({"message": "본인은 팔로우 할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# 페이지네이션 LimitOffsetPagination
+class BaseFollowListView(ListAPIView):
+    queryset = Follow.objects.all()
+    serializer_class = FollowSerializer
+    pagination_class = LimitOffsetPagination
+
+
+class FollowingListView(BaseFollowListView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="유저 팔로잉 리스트",
+        responses={200: "성공", 404: "찾을 수 없음", 500: "서버 에러"},
+    )
+    def get(self, request, following_id):
+        following_list = Follow.objects.filter(follower__id=following_id, is_followed=True).order_by("-created_at")
+        serializer = FollowSerializer(following_list, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class FollowerListView(BaseFollowListView):
+    permission_classes = [IsAuthenticated]
+
+    @swagger_auto_schema(
+        operation_summary="유저 팔로워 리스트",
+        responses={200: "성공", 404: "찾을 수 없음", 500: "서버 에러"},
+    )
+    def get(self, request, follower_id):
+        follower_list = Follow.objects.filter(following__id=follower_id, is_followed=True).order_by("-created_at")
+        serializer = FollowSerializer(follower_list, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
