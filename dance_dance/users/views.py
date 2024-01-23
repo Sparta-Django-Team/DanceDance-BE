@@ -226,6 +226,7 @@ class FollowingListView(BaseFollowListView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
+        tags=["유저"],
         operation_summary="유저 팔로잉 리스트",
         responses={200: "성공", 404: "찾을 수 없음", 500: "서버 에러"},
     )
@@ -239,6 +240,7 @@ class FollowerListView(BaseFollowListView):
     permission_classes = [IsAuthenticated]
 
     @swagger_auto_schema(
+        tags=["유저"],
         operation_summary="유저 팔로워 리스트",
         responses={200: "성공", 404: "찾을 수 없음", 500: "서버 에러"},
     )
