@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import logging
+import pymysql
 
 import environ
 
@@ -76,17 +77,17 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 
 # Database
+pymysql.install_as_MySQLdb()
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRESQL_DATABASE", default="dance_dance"),
-        "USER": env("POSTGRESQL_USER", default="postgres"),
-        "PASSWORD": env("POSTGRESQL_PASSWORD", default="password"),
-        "HOST": env("POSTGRESQL_HOST", default="localhost"),
-        "PORT": env("POSTGRESQL_PORT", default="5432"),
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": env("MYSQL_DATABASE", default="dance_dance"),
+        "USER": env("MYSQL_USER", default="dance_dance"),
+        "PASSWORD": env("MYSQL_PASSWORD", default="dance_dance!10"),
+        "HOST": env("MYSQL_HOST", default="localhost"),
+        "PORT": env("MYSQL_PORT", default="3306"),
     }
 }
-
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

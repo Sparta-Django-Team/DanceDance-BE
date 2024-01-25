@@ -1,19 +1,25 @@
 version: '3.9'
 
 volumes:
-  postgres: {}
+  mysql: {}
 
 services:
-  postgres:
-    container_name: postgres
-    image: postgres:16.0-alpine
+  mysql:
+    container_name: mysql
+    image: mysql:8.1
     volumes:
-      - postgres:/var/lib/postgresql/data/
+      - mysql:/var/lib/mysql
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=dance_dance
+      - MYSQL_ROOT_PASSWORD=dance_dance!10
+      - MYSQL_DATABASE=dance_dance
+      - MYSQL_USER=dance_dance
+      - MYSQL_PASSWORD=dance_dance!10
       - TZ=Asia/Seoul
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
     restart: on-failure
 
   django:
@@ -25,10 +31,10 @@ services:
     volumes:
       - .:/app
     environment:
-      - POSTGRESQL_HOST=postgres
+      - MYSQL_HOST=mysql
       - REDIS_URL=redis://redis:6379/0
     ports:
       - "8000:8000"
     depends_on:
-      - postgres
+      - mysql
     restart: on-failure
